@@ -1,7 +1,7 @@
 services:
   api:
     build: .
-    container_name: auth_api_stg
+    container_name: justme_api_stg
     env_file:
       - .stg.env
     ports:
@@ -13,10 +13,10 @@ services:
       - stg_net
 
   postgres:
-    image: postgres:17
-    container_name: auth_postgres_stg
+    image: postgis/postgis:17-3.5
+    container_name: justme_postgres_stg
     environment:
-      POSTGRES_DB: auth_stg_db
+      POSTGRES_DB: justme_stg_db
       POSTGRES_USER: stg_user
       POSTGRES_PASSWORD: 123456
     ports:
@@ -24,7 +24,7 @@ services:
     volumes:
       - postgres_stg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U stg_user -d auth_stg_db"]
+      test: ["CMD-SHELL", "pg_isready -U stg_user -d justme_stg_db"]
       interval: 5s
       timeout: 5s
       retries: 10

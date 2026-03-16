@@ -2,19 +2,55 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-  const config = new DocumentBuilder()
-    .setTitle('API')
-    .setDescription('The haptica API description')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
+    const app = await NestFactory.create(AppModule);
 
-  await app.listen(process.env.PORT ?? 3000);
+    // Security
+    app.use(helmet());
+    app.enableCors({
+        origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+        credentials: true,
+    });
+
+    // Global pipes
+    app.useGlobalPipes(
+        new ValidationPipe({
+            whitelist: true,
+            forbidNonWhitelisted: true,
+            transform: true,
+            transformOptions: { enableImplicitConversion: true },
+        }),
+    );
+
+    // Global prefix
+    app.setGlobalPrefix('api');
+
+    // Swagger
+    const config = new DocumentBuilder()
+        .setTitle('JustMe API')
+        .setDescription('JustMe — Location-based beauty marketplace API')
+        .setVersion('1.0')
+        .addBearerAuth()
+        .addTag('Auth', 'Authentication endpoints')
+        .addTag('Users', 'User management')
+        .addTag('Professionals', 'Professional profiles & search')
+        .addTag('Services', 'Service categories & listings')
+        .addTag('Bookings', 'Booking management')
+        .addTag('Schedule', 'Professional scheduling')
+        .addTag('Reviews', 'Ratings & reviews')
+        .addTag('Favorites', 'User favorites')
+        .addTag('Wallet', 'Wallet & transactions')
+        .addTag('Payments', 'Payment processing')
+        .addTag('Coupons', 'Coupons & rewards')
+        .addTag('Notifications', 'Notification management')
+        .addTag('Admin', 'Admin dashboard')
+        .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document);
+
+    await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

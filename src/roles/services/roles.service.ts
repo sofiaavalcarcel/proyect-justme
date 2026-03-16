@@ -54,6 +54,15 @@ export class RolesService {
         return roles;
     }
 
+    async findByName(name: string): Promise<Role | null> {
+        return this.roleRepo.findOne({ where: { name } });
+    }
+
+    async createSimple(name: string): Promise<Role> {
+        const role = this.roleRepo.create({ name, description: name });
+        return this.roleRepo.save(role);
+    }
+
 
     // async update(id: number, updateRoleDto: UpdateRoleDto) {
     //     const role = await this.findOne(id);

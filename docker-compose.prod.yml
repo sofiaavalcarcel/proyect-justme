@@ -3,7 +3,7 @@ services:
     build:
       context: .
       target: production
-    container_name: auth_api_prod
+    container_name: justme_api_prod
     env_file:
       - .prod.env
     depends_on:
@@ -12,12 +12,14 @@ services:
     ports:
       - "3002:3000"
     restart: always
+    networks:
+      - prod_net
 
   postgres:
-    image: postgres:17
-    container_name: auth_postgres_prod
+    image: postgis/postgis:17-3.5
+    container_name: justme_postgres_prod
     environment:
-      POSTGRES_DB: auth_prod_db
+      POSTGRES_DB: justme_prod_db
       POSTGRES_USER: prod_user
       POSTGRES_PASSWORD: secure_password
     ports:
@@ -26,16 +28,25 @@ services:
       - postgres_prod_data:/var/lib/postgresql/data
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U prod_user -d auth_prod_db"]
+      test: ["CMD-SHELL", "pg_isready -U prod_user -d justme_prod_db"]
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - prod_net
+
   pgadmin:
     image: dpage/pgadmin4
     environment:
       PGADMIN_DEFAULT_EMAIL: root@admin.com
       PGADMIN_DEFAULT_PASSWORD: root
-    ports: 
+    ports:
       - "5052:80"
+    networks:
+      - prod_net
+
 volumes:
   postgres_prod_data:
+
+networks:
+  prod_net:
