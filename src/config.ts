@@ -1,8 +1,4 @@
-/* 
-    sirve para leer variables de entorno (.env)
-    y ponerlas disponibles en toda la aplicación NestJS de forma ordenada y segura.
-*/
-import { registerAs } from "@nestjs/config"; 
+import { registerAs } from "@nestjs/config";
 
 export default registerAs('config', () => {
     return {
@@ -15,8 +11,14 @@ export default registerAs('config', () => {
         },
         jwt: {
             secret: process.env.JWT_SECRET,
-            expiresIn: parseInt(process.env.JWT_EXPIRES_IN ?? '3600', 10)
-            // expiresIn: process.env.JWT_EXPIRES_IN,
+            expiresIn: parseInt(process.env.JWT_EXPIRES_IN ?? '3600', 10),
+            refreshSecret: process.env.JWT_REFRESH_SECRET,
+            refreshExpiresIn: parseInt(process.env.JWT_REFRESH_EXPIRES_IN ?? '604800', 10),
         },
-    }
+        platform: {
+            commissionRate: parseFloat(process.env.PLATFORM_COMMISSION_RATE ?? '0.09'),
+            uploadDir: process.env.UPLOAD_DIR ?? './uploads',
+            corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+        },
+    };
 });

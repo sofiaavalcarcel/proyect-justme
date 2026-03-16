@@ -1,9 +1,9 @@
 services:
   postgres:
-    image: postgres:17
-    container_name: auth_postgres_dev
+    image: postgis/postgis:17-3.5
+    container_name: justme_postgres_dev
     environment:
-      POSTGRES_DB: auth_db
+      POSTGRES_DB: justme_db
       POSTGRES_USER: root
       POSTGRES_PASSWORD: 123456
     ports:
@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U root -d auth_db"]
+      test: ["CMD-SHELL", "pg_isready -U root -d justme_db"]
       interval: 5s
       timeout: 5s
       retries: 10
