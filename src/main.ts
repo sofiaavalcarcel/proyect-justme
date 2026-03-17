@@ -34,19 +34,6 @@ async function bootstrap() {
         .setDescription('JustMe — Location-based beauty marketplace API')
         .setVersion('1.0')
         .addBearerAuth()
-        .addTag('Auth', 'Authentication endpoints')
-        .addTag('Users', 'User management')
-        .addTag('Professionals', 'Professional profiles & search')
-        .addTag('Services', 'Service categories & listings')
-        .addTag('Bookings', 'Booking management')
-        .addTag('Schedule', 'Professional scheduling')
-        .addTag('Reviews', 'Ratings & reviews')
-        .addTag('Favorites', 'User favorites')
-        .addTag('Wallet', 'Wallet & transactions')
-        .addTag('Payments', 'Payment processing')
-        .addTag('Coupons', 'Coupons & rewards')
-        .addTag('Notifications', 'Notification management')
-        .addTag('Admin', 'Admin dashboard')
         .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('docs', app, document);

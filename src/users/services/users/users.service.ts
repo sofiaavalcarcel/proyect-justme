@@ -14,7 +14,13 @@ export class UsersService {
     ) {}
 
     async findAll() {
-        return await this.userRepo.find({ relations: ['roles'] });
+        return await this.userRepo.find({
+            relations: {
+                roles: {
+                    modules: true,
+                },
+            },
+        });
     }
 
     async findByEmail(email: string) {
@@ -36,7 +42,11 @@ export class UsersService {
     async findOne(userId: number) {
         const user = await this.userRepo.findOne({
             where: { id: userId },
-            relations: ['roles'],
+            relations: {
+                roles: {
+                    modules: true,
+                },
+            },
         });
         if (!user) {
             throw new NotFoundException(`User #${userId} not found`);
@@ -58,7 +68,9 @@ export class UsersService {
             password: hashedPassword,
             roles,
         });
-        return this.userRepo.save(newUser);
+        await this.userRepo.save(newUser);
+        
+        return this.findOne(newUser.id);
     }
 
     async createFromRegister(data: {
@@ -83,7 +95,9 @@ export class UsersService {
             password: data.password,
             roles: [roles],
         });
-        return this.userRepo.save(newUser);
+        await this.userRepo.save(newUser);
+        
+        return this.findOne(newUser.id);
     }
 
     async updateUser(id: number, updateUserDto: UpdateUserDto) {
@@ -91,7 +105,11 @@ export class UsersService {
 
         const user = await this.userRepo.findOne({
             where: { id },
-            relations: ['roles'],
+            relations: {
+                roles: {
+                    modules: true,
+                },
+            },
         });
 
         if (!user) throw new NotFoundException('User not found');

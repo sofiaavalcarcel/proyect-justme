@@ -8,20 +8,20 @@ import { ServicesService } from '../services/services.service';
 import { CreateServiceDto, UpdateServiceDto } from '../dtos/service.dto';
 import { CreateProfessionalServiceDto, UpdateProfessionalServiceDto } from '../dtos/professional-service.dto';
 
-@ApiTags('Services')
+@ApiTags('Servicios')
 @Controller('services')
 export class ServicesController {
     constructor(private readonly servicesService: ServicesService) {}
 
     // Service Categories
     @Get('categories')
-    @ApiOperation({ summary: 'Get all service categories' })
+    @ApiOperation({ summary: 'Obtener todas las categorías de servicios' })
     findAllCategories() {
         return this.servicesService.findAllCategories();
     }
 
     @Get('categories/:id')
-    @ApiOperation({ summary: 'Get service category by ID' })
+    @ApiOperation({ summary: 'Obtener categoría de servicio por ID' })
     findCategory(@Param('id', ParseIntPipe) id: number) {
         return this.servicesService.findCategoryById(id);
     }
@@ -29,7 +29,7 @@ export class ServicesController {
     @Post('categories')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Create service category (admin)' })
+    @ApiOperation({ summary: 'Crear categoría de servicio (Solo admin)' })
     createCategory(@Body() dto: CreateServiceDto) {
         return this.servicesService.createCategory(dto);
     }
@@ -37,14 +37,14 @@ export class ServicesController {
     @Patch('categories/:id')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Update service category (admin)' })
+    @ApiOperation({ summary: 'Actualizar categoría de servicio (Solo admin)' })
     updateCategory(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateServiceDto) {
         return this.servicesService.updateCategory(id, dto);
     }
 
     // Professional Services
     @Get('professional/:professionalId')
-    @ApiOperation({ summary: 'Get services offered by a professional' })
+    @ApiOperation({ summary: 'Obtener servicios ofrecidos por un profesional' })
     findProfessionalServices(@Param('professionalId', ParseIntPipe) professionalId: number) {
         return this.servicesService.findProfessionalServices(professionalId);
     }
@@ -52,7 +52,7 @@ export class ServicesController {
     @Post('professional/:professionalId')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Add service to professional profile' })
+    @ApiOperation({ summary: 'Agregar servicio al perfil del profesional' })
     addProfessionalService(
         @Param('professionalId', ParseIntPipe) professionalId: number,
         @Body() dto: CreateProfessionalServiceDto,
@@ -63,7 +63,7 @@ export class ServicesController {
     @Patch('professional-service/:id')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Update professional service listing' })
+    @ApiOperation({ summary: 'Actualizar listado de servicio del profesional' })
     updateProfessionalService(
         @Param('id', ParseIntPipe) id: number,
         @Body() dto: UpdateProfessionalServiceDto,
@@ -74,7 +74,7 @@ export class ServicesController {
     @Delete('professional-service/:id')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Remove professional service listing' })
+    @ApiOperation({ summary: 'Eliminar listado de servicio del profesional' })
     removeProfessionalService(@Param('id', ParseIntPipe) id: number) {
         return this.servicesService.removeProfessionalService(id);
     }

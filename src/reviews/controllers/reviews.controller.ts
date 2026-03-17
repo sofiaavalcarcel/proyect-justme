@@ -4,7 +4,7 @@ import { JwtAuthGuard } from '../../auth/guards/auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ReviewsService } from '../services/reviews.service';
 
-@ApiTags('Reviews')
+@ApiTags('Reseñas')
 @Controller('reviews')
 export class ReviewsController {
     constructor(private readonly reviewsService: ReviewsService) {}
@@ -12,13 +12,13 @@ export class ReviewsController {
     @Post()
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Create a review for a professional' })
+    @ApiOperation({ summary: 'Crear una reseña para un profesional' })
     create(@CurrentUser('id') userId: number, @Body() body: { professionalId: number; bookingId?: number; rating: number; comment?: string }) {
         return this.reviewsService.create(userId, body);
     }
 
     @Get('professional/:professionalId')
-    @ApiOperation({ summary: 'Get reviews for a professional' })
+    @ApiOperation({ summary: 'Obtener las reseñas de un profesional' })
     findByProfessional(@Param('professionalId', ParseIntPipe) professionalId: number) {
         return this.reviewsService.findByProfessional(professionalId);
     }
@@ -26,7 +26,7 @@ export class ReviewsController {
     @Get('user')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get reviews by current user' })
+    @ApiOperation({ summary: 'Obtener las reseñas escritas por el usuario actual' })
     findByUser(@CurrentUser('id') userId: number) {
         return this.reviewsService.findByUser(userId);
     }

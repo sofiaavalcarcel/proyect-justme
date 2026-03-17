@@ -9,20 +9,20 @@ import { ModulesGuard } from 'src/auth/guards/modules.guard.guard';
 @ApiBearerAuth()
 @Modules('modules')
 @UseGuards(JwtAuthGuard, ModulesGuard)
-@ApiTags('Modules')
+@ApiTags('Módulos')
 @Controller('modules')
 export class ModulesController {
 
   constructor(private readonly modulesService: ModulesService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new module' })
+  @ApiOperation({ summary: 'Crear un nuevo módulo' })
   create(@Body() dto: CreateModuleDto) {
     return this.modulesService.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all modules' })
+  @ApiOperation({ summary: 'Obtener todos los módulos' })
   findAll() {
     return this.modulesService.findAll();
   }

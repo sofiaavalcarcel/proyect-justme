@@ -8,7 +8,7 @@ import { BookingsService } from '../services/bookings.service';
 import { CreateBookingDto, UpdateBookingStatusDto } from '../dtos/booking.dto';
 import { BookingStatus } from '../entities/booking.entity';
 
-@ApiTags('Bookings')
+@ApiTags('Reservas')
 @Controller('bookings')
 export class BookingsController {
     constructor(private readonly bookingsService: BookingsService) {}
@@ -16,7 +16,7 @@ export class BookingsController {
     @Post()
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Create a new booking' })
+    @ApiOperation({ summary: 'Crear una nueva reserva' })
     create(@CurrentUser('id') userId: number, @Body() dto: CreateBookingDto) {
         return this.bookingsService.create(userId, dto);
     }
@@ -24,7 +24,7 @@ export class BookingsController {
     @Get()
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get current user bookings' })
+    @ApiOperation({ summary: 'Obtener reservas del usuario actual' })
     findUserBookings(@CurrentUser('id') userId: number) {
         return this.bookingsService.findUserBookings(userId);
     }
@@ -32,7 +32,7 @@ export class BookingsController {
     @Get('professional/:professionalId')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get bookings for a professional' })
+    @ApiOperation({ summary: 'Obtener reservas de un profesional' })
     findProfessionalBookings(@Param('professionalId', ParseIntPipe) professionalId: number) {
         return this.bookingsService.findProfessionalBookings(professionalId);
     }
@@ -40,7 +40,7 @@ export class BookingsController {
     @Get(':id')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get booking by ID' })
+    @ApiOperation({ summary: 'Obtener una reserva por su ID' })
     findOne(@Param('id', ParseIntPipe) id: number) {
         return this.bookingsService.findOne(id);
     }
@@ -48,7 +48,7 @@ export class BookingsController {
     @Patch(':id/status')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Update booking status' })
+    @ApiOperation({ summary: 'Actualizar el estado de una reserva' })
     updateStatus(
         @Param('id', ParseIntPipe) id: number,
         @Body() dto: UpdateBookingStatusDto,

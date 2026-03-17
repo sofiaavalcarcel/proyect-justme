@@ -3,7 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/auth.guard';
 import { PaymentsService } from '../services/payments.service';
 
-@ApiTags('Payments')
+@ApiTags('Pagos')
 @Controller('payments')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
@@ -11,7 +11,7 @@ export class PaymentsController {
     constructor(private readonly paymentsService: PaymentsService) {}
 
     @Post('intent')
-    @ApiOperation({ summary: 'Create payment intent' })
+    @ApiOperation({ summary: 'Crear intención de pago' })
     createPaymentIntent(
         @Body() body: { amount: number; currency?: string; metadata?: Record<string, any> },
     ) {
@@ -19,13 +19,13 @@ export class PaymentsController {
     }
 
     @Post('confirm')
-    @ApiOperation({ summary: 'Confirm payment' })
+    @ApiOperation({ summary: 'Confirmar pago' })
     confirmPayment(@Body('paymentIntentId') paymentIntentId: string) {
         return this.paymentsService.confirmPayment(paymentIntentId);
     }
 
     @Post('refund')
-    @ApiOperation({ summary: 'Process refund' })
+    @ApiOperation({ summary: 'Procesar reembolso' })
     processRefund(@Body() body: { paymentIntentId: string; amount?: number }) {
         return this.paymentsService.processRefund(body.paymentIntentId, body.amount);
     }

@@ -31,8 +31,8 @@ export class RolesController {
 
     // Crear rol
     @Post()
-    @ApiOperation({ summary: 'Create a new role' })
-    @ApiResponse({ status: 201, description: 'Role created successfully' })
+    @ApiOperation({ summary: 'Crear un nuevo rol' })
+    @ApiResponse({ status: 201, description: 'Rol creado exitosamente' })
     async create(@Body() createRoleDto: CreateRoleDto) {
         return this.rolesService.create(createRoleDto);
     }
@@ -40,21 +40,21 @@ export class RolesController {
     // Listar todos los roles
     // @UseGuards(JwtAuthGuard)
     @Get()
-    @ApiOperation({ summary: 'Get all roles' })
+    @ApiOperation({ summary: 'Obtener todos los roles' })
     async findAll() {
         return this.rolesService.findAll();
     }
 
     // Obtener un rol por id
     @Get(':id')
-    @ApiOperation({ summary: 'Get role by id' })
+    @ApiOperation({ summary: 'Obtener rol por id' })
     async findOne(@Param('id', ParseIntPipe) id: number) {
         return this.rolesService.findOne(id);
     }
 
     // Actualizar un rol
     @Patch(':id')
-    @ApiOperation({ summary: 'Update a role by id' })
+    @ApiOperation({ summary: 'Actualizar un rol por id' })
     async update(
         @Param('id', ParseIntPipe) id: number,
         @Body() updateRoleDto: UpdateRoleDto,
@@ -65,7 +65,7 @@ export class RolesController {
     // Eliminar un rol
     @Delete(':id')
     @HttpCode(204)
-    @ApiOperation({ summary: 'Delete a role by id' })
+    @ApiOperation({ summary: 'Eliminar un rol por id' })
     async remove(@Param('id', ParseIntPipe) id: number) {
         //opcional: validar si el rol tiene usuarios asignados antes de eliminar
         return this.rolesService.remove(id);

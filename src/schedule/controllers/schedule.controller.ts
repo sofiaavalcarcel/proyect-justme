@@ -5,13 +5,13 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/auth.guard';
 import { ScheduleService } from '../services/schedule.service';
 
-@ApiTags('Schedule')
+@ApiTags('Agenda')
 @Controller('schedule')
 export class ScheduleController {
     constructor(private readonly scheduleService: ScheduleService) {}
 
     @Get(':professionalId')
-    @ApiOperation({ summary: 'Get professional schedule configuration' })
+    @ApiOperation({ summary: 'Obtener configuración de agenda del profesional' })
     getSchedule(@Param('professionalId', ParseIntPipe) professionalId: number) {
         return this.scheduleService.getSchedule(professionalId);
     }
@@ -19,7 +19,7 @@ export class ScheduleController {
     @Put(':professionalId')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Set or update professional schedule' })
+    @ApiOperation({ summary: 'Configurar o actualizar la agenda del profesional' })
     setSchedule(
         @Param('professionalId', ParseIntPipe) professionalId: number,
         @Body() scheduleData: any,
@@ -28,7 +28,7 @@ export class ScheduleController {
     }
 
     @Get(':professionalId/available-slots')
-    @ApiOperation({ summary: 'Get available time slots for a date' })
+    @ApiOperation({ summary: 'Obtener los horarios disponibles para una fecha' })
     getAvailableSlots(
         @Param('professionalId', ParseIntPipe) professionalId: number,
         @Query('date') date: string,
