@@ -11,25 +11,25 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ProfessionalsService } from '../services/professionals.service';
 import { CreateProfessionalDto, UpdateProfessionalDto, NearbySearchDto } from '../dtos/professional.dto';
 
-@ApiTags('Professionals')
+@ApiTags('Profesionales')
 @Controller('professionals')
 export class ProfessionalsController {
     constructor(private readonly professionalsService: ProfessionalsService) {}
 
     @Get('nearby')
-    @ApiOperation({ summary: 'Find professionals near a location' })
+    @ApiOperation({ summary: 'Encontrar profesionales cerca de una ubicación' })
     findNearby(@Query() query: NearbySearchDto) {
         return this.professionalsService.findNearby(query);
     }
 
     @Get(':id')
-    @ApiOperation({ summary: 'Get professional profile by ID' })
+    @ApiOperation({ summary: 'Obtener perfil de profesional por ID' })
     findOne(@Param('id', ParseIntPipe) id: number) {
         return this.professionalsService.findOne(id);
     }
 
     @Get('user/:userId')
-    @ApiOperation({ summary: 'Get professional profile by user ID' })
+    @ApiOperation({ summary: 'Obtener perfil de profesional por ID de usuario' })
     findByUser(@Param('userId', ParseIntPipe) userId: number) {
         return this.professionalsService.findByUserId(userId);
     }
@@ -37,7 +37,7 @@ export class ProfessionalsController {
     @Post()
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Create professional profile' })
+    @ApiOperation({ summary: 'Crear perfil de profesional' })
     create(@CurrentUser('id') userId: number, @Body() dto: CreateProfessionalDto) {
         return this.professionalsService.create(userId, dto);
     }
@@ -45,7 +45,7 @@ export class ProfessionalsController {
     @Patch(':id')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Update professional profile' })
+    @ApiOperation({ summary: 'Actualizar perfil de profesional' })
     update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProfessionalDto) {
         return this.professionalsService.update(id, dto);
     }
@@ -55,7 +55,7 @@ export class ProfessionalsController {
     @ApiBearerAuth()
     @UseInterceptors(FileInterceptor('image'))
     @ApiConsumes('multipart/form-data')
-    @ApiOperation({ summary: 'Upload portfolio image' })
+    @ApiOperation({ summary: 'Subir imagen al portafolio' })
     async uploadPortfolioImage(
         @Param('id', ParseIntPipe) id: number,
         @UploadedFile() file: Express.Multer.File,
@@ -68,7 +68,7 @@ export class ProfessionalsController {
     @Delete('portfolio/:imageId')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Remove portfolio image' })
+    @ApiOperation({ summary: 'Eliminar imagen del portafolio' })
     removePortfolioImage(@Param('imageId', ParseIntPipe) imageId: number) {
         return this.professionalsService.removePortfolioImage(imageId);
     }

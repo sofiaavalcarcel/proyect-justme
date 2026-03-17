@@ -15,37 +15,37 @@ export class AdminController {
     constructor(private readonly adminService: AdminService) {}
 
     @Get('stats')
-    @ApiOperation({ summary: 'Get dashboard statistics' })
+    @ApiOperation({ summary: 'Obtener estadísticas del dashboard' })
     getStats() {
         return this.adminService.getDashboardStats();
     }
 
     @Get('users')
-    @ApiOperation({ summary: 'Get paginated user list' })
+    @ApiOperation({ summary: 'Obtener listado paginado de usuarios' })
     getUsers(@Query() pagination: PaginationDto) {
         return this.adminService.getUsers(pagination.page, pagination.limit);
     }
 
     @Get('professionals')
-    @ApiOperation({ summary: 'Get paginated professional list' })
+    @ApiOperation({ summary: 'Obtener listado paginado de profesionales' })
     getProfessionals(@Query() pagination: PaginationDto) {
         return this.adminService.getProfessionals(pagination.page, pagination.limit);
     }
 
     @Get('transactions')
-    @ApiOperation({ summary: 'Get paginated transaction list' })
+    @ApiOperation({ summary: 'Obtener listado paginado de transacciones' })
     getTransactions(@Query() pagination: PaginationDto) {
         return this.adminService.getTransactions(pagination.page, pagination.limit);
     }
 
     @Patch('users/:id/status')
-    @ApiOperation({ summary: 'Toggle user active status' })
+    @ApiOperation({ summary: 'Alternar estado activo del usuario' })
     toggleUserStatus(@Param('id', ParseIntPipe) id: number) {
         return this.adminService.toggleUserStatus(id);
     }
 
     @Patch('professionals/:id/verify')
-    @ApiOperation({ summary: 'Verify a professional' })
+    @ApiOperation({ summary: 'Verificar a un profesional' })
     verifyProfessional(@Param('id', ParseIntPipe) id: number) {
         return this.adminService.verifyProfessional(id);
     }

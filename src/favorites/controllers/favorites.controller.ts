@@ -4,7 +4,7 @@ import { JwtAuthGuard } from '../../auth/guards/auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { FavoritesService } from '../services/favorites.service';
 
-@ApiTags('Favorites')
+@ApiTags('Favoritos')
 @Controller('favorites')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
@@ -12,7 +12,7 @@ export class FavoritesController {
     constructor(private readonly favoritesService: FavoritesService) {}
 
     @Post(':professionalId')
-    @ApiOperation({ summary: 'Toggle favorite for a professional' })
+    @ApiOperation({ summary: 'Añadir/Quitar profesional de favoritos' })
     toggle(
         @CurrentUser('id') userId: number,
         @Param('professionalId', ParseIntPipe) professionalId: number,
@@ -21,13 +21,13 @@ export class FavoritesController {
     }
 
     @Get()
-    @ApiOperation({ summary: 'Get current user favorites' })
+    @ApiOperation({ summary: 'Obtener los favoritos del usuario actual' })
     findUserFavorites(@CurrentUser('id') userId: number) {
         return this.favoritesService.findUserFavorites(userId);
     }
 
     @Get('check/:professionalId')
-    @ApiOperation({ summary: 'Check if professional is favorited' })
+    @ApiOperation({ summary: 'Verificar si un profesional está en favoritos' })
     isFavorite(
         @CurrentUser('id') userId: number,
         @Param('professionalId', ParseIntPipe) professionalId: number,
