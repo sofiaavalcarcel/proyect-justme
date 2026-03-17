@@ -10,7 +10,14 @@ async function bootstrap() {
     // Security
     app.use(helmet());
     app.enableCors({
-        origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+        origin: (origin, callback) => {
+            // Permitir cualquier origen de localhost durante desarrollo
+            if (!origin || origin.startsWith('http://localhost')) {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
         credentials: true,
     });
