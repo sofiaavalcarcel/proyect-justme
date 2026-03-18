@@ -25,7 +25,8 @@
     "migration:revert:dev": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d ./src/database/data-source.ts",
     "migration:run": "node ./node_modules/typeorm/cli.js migration:run -d ./dist/database/data-source.js",
     "migration:revert": "node ./node_modules/typeorm/cli.js migration:revert -d ./dist/database/data-source.js",
-    "seed:dev": "cross-env NODE_ENV=dev ts-node -r tsconfig-paths/register ./src/scripts/seed.ts"
+    "seed:dev": "cross-env NODE_ENV=dev ts-node -r tsconfig-paths/register ./src/scripts/seed.ts",
+    "seed-full:dev": "cross-env NODE_ENV=dev ts-node -r tsconfig-paths/register ./src/scripts/seed-full.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
