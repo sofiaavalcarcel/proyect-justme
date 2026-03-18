@@ -37,6 +37,12 @@ export class Professional {
     @Column({ type: 'decimal', precision: 5, scale: 2, default: 5.0 })
     serviceRadius: number;
 
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    certificationNumber: string;
+
+    @Column({ type: 'text', nullable: true })
+    specialties: string;
+
     @Column({ type: 'boolean', default: false })
     verified: boolean;
 

@@ -26,6 +26,16 @@ export class CreateProfessionalDto {
     @IsNumber()
     @IsOptional()
     serviceRadius?: number;
+
+    @ApiPropertyOptional({ example: 'CERT-123' })
+    @IsString()
+    @IsOptional()
+    certificationNumber?: string;
+
+    @ApiPropertyOptional({ example: 'Barber, Stylist' })
+    @IsString()
+    @IsOptional()
+    specialties?: string;
 }
 
 export class UpdateProfessionalDto extends PartialType(CreateProfessionalDto) {}
