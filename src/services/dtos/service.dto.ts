@@ -19,6 +19,11 @@ export class CreateServiceDto {
     @IsString()
     @IsOptional()
     description?: string;
+
+    @ApiPropertyOptional({ example: true })
+    @IsBoolean()
+    @IsOptional()
+    isActive?: boolean;
 }
 
 export class UpdateServiceDto extends PartialType(CreateServiceDto) {}

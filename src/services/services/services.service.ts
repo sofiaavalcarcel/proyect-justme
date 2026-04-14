@@ -15,7 +15,7 @@ export class ServicesService {
 
     // Service categories
     async findAllCategories() {
-        return this.serviceRepo.find({ where: { isActive: true } });
+        return this.serviceRepo.find();
     }
 
     async findCategoryById(id: number) {

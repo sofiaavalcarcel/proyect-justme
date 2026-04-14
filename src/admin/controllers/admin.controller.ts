@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, ParseIntPipe, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Put, Param, ParseIntPipe, Query, UseGuards, Body } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -44,9 +44,33 @@ export class AdminController {
         return this.adminService.toggleUserStatus(id);
     }
 
+    @Put('users/:id')
+    @ApiOperation({ summary: 'Actualizar datos de usuario' })
+    updateUser(@Param('id', ParseIntPipe) id: number, @Body() data: any) {
+        return this.adminService.updateUser(id, data);
+    }
+
     @Patch('professionals/:id/verify')
     @ApiOperation({ summary: 'Verificar a un profesional' })
     verifyProfessional(@Param('id', ParseIntPipe) id: number) {
         return this.adminService.verifyProfessional(id);
+    }
+
+    @Get('services')
+    @ApiOperation({ summary: 'Obtener todas las categorías de servicios (incluyendo inactivas)' })
+    getServices() {
+        return this.adminService.getServices();
+    }
+
+    @Patch('services/:id')
+    @ApiOperation({ summary: 'Actualizar categoría de servicio (Nombre/Estado/etc)' })
+    updateService(@Param('id', ParseIntPipe) id: number, @Body() data: any) {
+        return this.adminService.updateService(id, data);
+    }
+
+    @Put('professionals/:id')
+    @ApiOperation({ summary: 'Actualizar perfil del profesional (Verificación/Visibilidad)' })
+    updateProfessional(@Param('id', ParseIntPipe) id: number, @Body() data: any) {
+        return this.adminService.updateProfessional(id, data);
     }
 }

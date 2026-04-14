@@ -87,6 +87,57 @@ export class AdminService {
         return this.userRepo.save(user);
     }
 
+    async updateUser(id: number, data: any) {
+        const user = await this.userRepo.findOne({ where: { id } });
+        if (!user) return null;
+        
+        // No permitimos actualizar el password por aquí por seguridad
+        delete data.password;
+        
+        this.userRepo.merge(user, data);
+        return this.userRepo.save(user);
+    }
+
+    async getServices() {
+        return this.serviceRepo.find();
+    }
+
+    async updateService(id: number, data: any) {
+        const service = await this.serviceRepo.findOne({ where: { id } });
+        if (!service) return null;
+        this.serviceRepo.merge(service, data);
+        return this.serviceRepo.save(service);
+    }
+
+    async updateProfessional(id: number, data: any) {
+        const pro = await this.proRepo.findOne({ where: { id }, relations: ['user'] });
+        if (!pro) return null;
+
+        // Si data contiene información del usuario (name, email, etc), la extraemos
+        if (data.user && pro.user) {
+            this.userRepo.merge(pro.user, data.user);
+            await this.userRepo.save(pro.user);
+            delete data.user;
+        } else if (data.name || data.lastName || data.email) {
+            // Manejo alternativo si el frontend envía los campos planos
+            const { name, lastName, email, phone, ...proData } = data;
+            const userData: any = {};
+            if (name !== undefined) userData.name = name;
+            if (lastName !== undefined) userData.lastName = lastName;
+            if (email !== undefined) userData.email = email;
+            if (phone !== undefined) userData.phone = phone;
+
+            if (Object.keys(userData).length > 0 && pro.user) {
+                this.userRepo.merge(pro.user, userData);
+                await this.userRepo.save(pro.user);
+            }
+            data = proData;
+        }
+
+        this.proRepo.merge(pro, data);
+        return this.proRepo.save(pro);
+    }
+
     async verifyProfessional(professionalId: number) {
         await this.proRepo.update(professionalId, { verified: true });
         return { success: true };

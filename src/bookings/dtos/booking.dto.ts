@@ -28,6 +28,16 @@ export class CreateBookingDto {
     @IsEnum(LocationType)
     @IsOptional()
     locationType?: LocationType;
+
+    @ApiPropertyOptional({ example: 4.711 })
+    @IsNumber()
+    @IsOptional()
+    latitude?: number;
+
+    @ApiPropertyOptional({ example: -74.0721 })
+    @IsNumber()
+    @IsOptional()
+    longitude?: number;
 }
 
 export class UpdateBookingStatusDto {

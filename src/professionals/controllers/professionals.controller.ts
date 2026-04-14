@@ -9,7 +9,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ProfessionalsService } from '../services/professionals.service';
-import { CreateProfessionalDto, UpdateProfessionalDto, NearbySearchDto } from '../dtos/professional.dto';
+import { CreateProfessionalDto, UpdateProfessionalDto, NearbySearchDto, ServiceMatchDto } from '../dtos/professional.dto';
 
 @ApiTags('Profesionales')
 @Controller('professionals')
@@ -20,6 +20,12 @@ export class ProfessionalsController {
     @ApiOperation({ summary: 'Encontrar profesionales cerca de una ubicación' })
     findNearby(@Query() query: NearbySearchDto) {
         return this.professionalsService.findNearby(query);
+    }
+
+    @Get('search/match')
+    @ApiOperation({ summary: 'Emparejar profesionales basados en un servicio y su radio de atención' })
+    matchByService(@Query() query: ServiceMatchDto) {
+        return this.professionalsService.matchByService(query);
     }
 
     @Get(':id')

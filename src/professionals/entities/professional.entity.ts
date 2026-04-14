@@ -43,6 +43,9 @@ export class Professional {
     @Column({ type: 'text', nullable: true })
     specialties: string;
 
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    experience: string;
+
     @Column({ type: 'boolean', default: false })
     verified: boolean;
 
@@ -57,6 +60,15 @@ export class Professional {
 
     @Column({ type: 'boolean', default: true })
     isVisible: boolean;
+
+    @Column({ type: 'int', default: 8 })
+    maxAppointments: number;
+
+    @Column({ type: 'int', default: 15, comment: 'Buffer time in minutes' })
+    bufferTime: number;
+
+    @Column({ type: 'int', default: 2, comment: 'Advance notice in hours' })
+    advanceNotice: number;
 
     @CreateDateColumn()
     joinDate: Date;
