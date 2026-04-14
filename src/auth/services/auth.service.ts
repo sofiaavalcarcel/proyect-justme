@@ -21,6 +21,12 @@ export class AuthService {
             throw new UnauthorizedException('Invalid credentials');
         }
 
+        const isDeactivated = user.isActive === false || String(user.isActive) === 'false' || String(user.isActive) === '0';
+        
+        if (isDeactivated) {
+            throw new UnauthorizedException('Cuenta desabilitada por incumplimiento de las normas, contacte con soporte');
+        }
+
         const { password: _, refreshToken: __, ...result } = user;
         return result;
     }
