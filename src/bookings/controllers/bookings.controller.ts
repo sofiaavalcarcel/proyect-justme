@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../../auth/guards/auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { BookingsService } from '../services/bookings.service';
 import { CreateBookingDto, UpdateBookingStatusDto } from '../dtos/booking.dto';
+import { RescheduleBookingDto } from '../dtos/reschedule-booking.dto';
 import { BookingStatus } from '../entities/booking.entity';
 
 @ApiTags('Reservas')
@@ -43,6 +44,17 @@ export class BookingsController {
     @ApiOperation({ summary: 'Obtener una reserva por su ID' })
     findOne(@Param('id', ParseIntPipe) id: number) {
         return this.bookingsService.findOne(id);
+    }
+
+    @Patch(':id/reschedule')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Reprogramar una reserva existente' })
+    reschedule(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: RescheduleBookingDto,
+    ) {
+        return this.bookingsService.reschedule(id, dto.date, dto.startTime);
     }
 
     @Patch(':id/status')

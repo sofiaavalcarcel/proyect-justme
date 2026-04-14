@@ -1,15 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Professional } from '../entities/professional.entity';
 import { PortfolioImage } from '../entities/portfolio-image.entity';
-import { CreateProfessionalDto, UpdateProfessionalDto, NearbySearchDto } from '../dtos/professional.dto';
+import { User } from '../../users/entities/user.entity';
+import { CreateProfessionalDto, UpdateProfessionalDto, NearbySearchDto, ServiceMatchDto } from '../dtos/professional.dto';
+import { ScheduleService } from '../../schedule/services/schedule.service';
 
 @Injectable()
 export class ProfessionalsService {
     constructor(
         @InjectRepository(Professional) private proRepo: Repository<Professional>,
         @InjectRepository(PortfolioImage) private portfolioRepo: Repository<PortfolioImage>,
+        @InjectRepository(User) private userRepo: Repository<User>,
+        @Inject(forwardRef(() => ScheduleService))
+        private scheduleService: ScheduleService,
     ) {}
 
     async findNearby(dto: NearbySearchDto) {
@@ -19,6 +24,7 @@ export class ProfessionalsService {
         let query = this.proRepo
             .createQueryBuilder('professional')
             .leftJoinAndSelect('professional.user', 'user')
+            .leftJoinAndSelect('professional.schedules', 'schedules')
             .leftJoinAndSelect('professional.professionalServices', 'ps')
             .leftJoinAndSelect('ps.service', 'service')
             .where('professional.isVisible = :visible', { visible: true })
@@ -35,22 +41,201 @@ export class ProfessionalsService {
             });
         }
 
+        if (dto.date && dto.time) {
+            const dayOfWeek = this.getDayOfWeek(dto.date);
+            const duration = 60; // Default duration of 60 minutes if no specific service selected or for general check
+
+            // 1. Basic Working Hours Filter
+            query = query.andWhere(qb => {
+                const subQuery = qb.subQuery()
+                    .select('1')
+                    .from('schedules', 's')
+                    .where('s.professionalId = professional.id')
+                    .andWhere('s.dayOfWeek = :dayOfWeek', { dayOfWeek })
+                    .andWhere('s.isActive = :isActive', { isActive: true })
+                    .andWhere('s.startTime <= :time', { time: dto.time })
+                    .andWhere('s.endTime >= CAST(CAST(:time AS TIME) + CAST((:duration || \' minutes\') AS INTERVAL) AS TIME)', { time: dto.time, duration })
+                    .getQuery();
+                return 'EXISTS ' + subQuery;
+            });
+
+            // 2. Booking Filter
+            query = query.andWhere(qb => {
+                const subQuery = qb.subQuery()
+                    .select('1')
+                    .from('bookings', 'b')
+                    .where('b.professionalId = professional.id')
+                    .andWhere('b.date = :date', { date: dto.date })
+                    .andWhere('b.status IN (:...statuses)', { statuses: ['confirmed', 'pending'] })
+                    .andWhere('b.startTime < CAST(CAST(:time AS TIME) + CAST((:duration || \' minutes\') AS INTERVAL) AS TIME)', { time: dto.time, duration })
+                    .andWhere('b.endTime > CAST(:time AS TIME)', { time: dto.time })
+                    .getQuery();
+                return 'NOT EXISTS ' + subQuery;
+            });
+
+            // 3. Breaks Filter
+            query = query.andWhere(qb => {
+                const subQuery = qb.subQuery()
+                    .select('1')
+                    .from('schedule_breaks', 'sb')
+                    .leftJoin('schedules', 's', 'sb.scheduleId = s.id')
+                    .where('s.professionalId = professional.id')
+                    .andWhere('s.dayOfWeek = :dayOfWeek', { dayOfWeek })
+                    .andWhere('sb.startTime < CAST(CAST(:time AS TIME) + CAST((:duration || \' minutes\') AS INTERVAL) AS TIME)', { time: dto.time, duration })
+                    .andWhere('sb.endTime > CAST(:time AS TIME)', { time: dto.time })
+                    .getQuery();
+                return 'NOT EXISTS ' + subQuery;
+            });
+
+            // 4. Exceptions Filter
+            query = query.andWhere(qb => {
+                const subQuery = qb.subQuery()
+                    .select('1')
+                    .from('schedule_exceptions', 'se')
+                    .where('se.professionalId = professional.id')
+                    .andWhere('se.date = :date', { date: dto.date })
+                    .andWhere(
+                        '(se.isFullDay = true OR (se.startTime < CAST(CAST(:time AS TIME) + CAST((:duration || \' minutes\') AS INTERVAL) AS TIME) AND se.endTime > CAST(:time AS TIME)))',
+                        { time: dto.time, duration }
+                    )
+                    .getQuery();
+                return 'NOT EXISTS ' + subQuery;
+            });
+        }
+
         const professionals = await query
             .orderBy('professional.averageRating', 'DESC')
             .addOrderBy('professional.completedServices', 'DESC')
             .getMany();
 
-        // Calculate actual distance and sort
-        return professionals.map((pro) => {
+        // Calculate actual distance, sort and obfuscate location for privacy
+        let result = professionals.map((pro) => {
             const distance = this.calculateDistance(
                 dto.latitude,
                 dto.longitude,
                 Number(pro.latitude),
                 Number(pro.longitude),
             );
-            return { ...pro, distance: Math.round(distance * 10) / 10 };
-        }).filter(pro => pro.distance <= radius)
-          .sort((a, b) => a.distance - b.distance);
+            
+            return { 
+                ...pro, 
+                distance: Math.round(distance * 10) / 10 
+            };
+        }).filter(pro => pro.distance <= radius);
+
+        return result.sort((a, b) => a.distance - b.distance);
+    }
+
+    async matchByService(dto: ServiceMatchDto) {
+        const { serviceId, latitude, longitude, date, time } = dto;
+
+        let query = this.proRepo
+            .createQueryBuilder('professional')
+            .leftJoinAndSelect('professional.user', 'user')
+            .leftJoinAndSelect('professional.professionalServices', 'ps')
+            .leftJoinAndSelect('ps.service', 'service')
+            .leftJoinAndSelect('professional.portfolioImages', 'portfolio')
+            .leftJoin('professional.schedules', 'schedules')
+            .where('professional.isVisible = :visible', { visible: true })
+            .andWhere('ps.serviceId = :serviceId', { serviceId })
+            .andWhere('ps.isActive = :active', { active: true })
+            .andWhere(
+                'ST_DistanceSphere(ST_MakePoint(professional.longitude, professional.latitude), ST_MakePoint(:lng, :lat)) / 1000 <= professional.serviceRadius',
+                { lat: latitude, lng: longitude }
+            );
+
+        if (date && time) {
+            const dayOfWeek = this.getDayOfWeek(date);
+            
+            // 1. Basic Working Hours Filter
+            query = query.andWhere(qb => {
+                const subQuery = qb.subQuery()
+                    .select('1')
+                    .from('schedules', 's')
+                    .where('s.professionalId = professional.id')
+                    .andWhere('s.dayOfWeek = :dayOfWeek', { dayOfWeek })
+                    .andWhere('s.isActive = :isActive', { isActive: true })
+                    .andWhere('s.startTime <= :time', { time })
+                    // We also check that endTime >= time + duration
+                    // Duration is in ps.duration
+                    .andWhere('s.endTime >= CAST(CAST(:time AS TIME) + CAST((ps.duration || \' minutes\') AS INTERVAL) AS TIME)')
+                    .getQuery();
+                return 'EXISTS ' + subQuery;
+            });
+
+            // 2. Booking Filter (No confirmed/pending bookings at that time)
+            query = query.andWhere(qb => {
+                const subQuery = qb.subQuery()
+                    .select('1')
+                    .from('bookings', 'b')
+                    .where('b.professionalId = professional.id')
+                    .andWhere('b.date = :date', { date })
+                    .andWhere('b.status IN (:...statuses)', { statuses: ['confirmed', 'pending'] })
+                    .andWhere('b.startTime < CAST(CAST(:time AS TIME) + CAST((ps.duration || \' minutes\') AS INTERVAL) AS TIME)')
+                    .andWhere('b.endTime > CAST(:time AS TIME)')
+                    .getQuery();
+                return 'NOT EXISTS ' + subQuery;
+            });
+
+            // 3. Breaks Filter
+            query = query.andWhere(qb => {
+                const subQuery = qb.subQuery()
+                    .select('1')
+                    .from('schedule_breaks', 'sb')
+                    .leftJoin('schedules', 's', 'sb.scheduleId = s.id')
+                    .where('s.professionalId = professional.id')
+                    .andWhere('s.dayOfWeek = :dayOfWeek', { dayOfWeek })
+                    .andWhere('sb.startTime < CAST(CAST(:time AS TIME) + CAST((ps.duration || \' minutes\') AS INTERVAL) AS TIME)')
+                    .andWhere('sb.endTime > CAST(:time AS TIME)')
+                    .getQuery();
+                return 'NOT EXISTS ' + subQuery;
+            });
+
+            // 4. Exceptions Filter
+            query = query.andWhere(qb => {
+                const subQuery = qb.subQuery()
+                    .select('1')
+                    .from('schedule_exceptions', 'se')
+                    .where('se.professionalId = professional.id')
+                    .andWhere('se.date = :date', { date })
+                    .andWhere(
+                        '(se.isFullDay = true OR (se.startTime < CAST(CAST(:time AS TIME) + CAST((ps.duration || \' minutes\') AS INTERVAL) AS TIME) AND se.endTime > CAST(:time AS TIME)))'
+                    )
+                    .getQuery();
+                return 'NOT EXISTS ' + subQuery;
+            });
+        }
+
+        return query
+            .orderBy('professional.averageRating', 'DESC')
+            .addOrderBy('professional.completedServices', 'DESC')
+            .getMany();
+    }
+
+    private getDayOfWeek(dateStr: string): string {
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const date = new Date(dateStr + 'T12:00:00');
+        return days[date.getDay()];
+    }
+
+    async isLocationInRadius(proId: number, lat: number, lng: number): Promise<{ inRadius: boolean; distance: number }> {
+        const pro = await this.proRepo.findOne({ where: { id: proId } });
+        if (!pro) return { inRadius: false, distance: 0 };
+
+        // Use a more robust raw query for the distance calculation
+        const result = await this.proRepo.query(
+            `SELECT ST_DistanceSphere(ST_MakePoint(longitude, latitude), ST_MakePoint($1, $2)) / 1000 AS distance 
+             FROM professionals WHERE id = $3`,
+            [lng, lat, proId]
+        );
+
+        if (!result || result.length === 0) return { inRadius: false, distance: 0 };
+        
+        const distance = parseFloat(result[0].distance);
+        return {
+            inRadius: distance <= pro.serviceRadius,
+            distance
+        };
     }
 
     async findOne(id: number) {
@@ -90,8 +275,57 @@ export class ProfessionalsService {
 
     async update(id: number, dto: UpdateProfessionalDto) {
         const professional = await this.findOne(id);
-        this.proRepo.merge(professional, dto);
-        return this.proRepo.save(professional);
+        
+        // 1. Separate fields
+        const { name, lastName, email, phone, schedule, ...proData } = dto;
+
+        // 2. Update user related fields if any are provided
+        if (name !== undefined || lastName !== undefined || email !== undefined || phone !== undefined) {
+            const userUpdate: any = {};
+            if (name !== undefined) userUpdate.name = name;
+            if (lastName !== undefined) userUpdate.lastName = lastName;
+            if (email !== undefined) userUpdate.email = email;
+            if (phone !== undefined) userUpdate.phone = phone;
+            
+            await this.userRepo.update(professional.userId, userUpdate);
+        }
+
+        // 3. Handle nested schedule update if it comes from the frontend dashboard
+        if (schedule) {
+            const transformedSchedule = this.transformFrontendSchedule(schedule);
+            await this.scheduleService.setSchedule(id, transformedSchedule);
+        }
+
+        // 4. Update professional entity with remaining fields
+        if (Object.keys(proData).length > 0) {
+            await this.proRepo.update(id, proData);
+        }
+
+        return this.findOne(id);
+    }
+
+    private transformFrontendSchedule(feSchedule: any): any[] {
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const transformed: any[] = [];
+
+        days.forEach(day => {
+            const isActive = feSchedule.activeDays?.[day] ?? false;
+            const times = feSchedule.dayTimes?.[day] || { start: '09:00', end: '18:00' };
+            
+            transformed.push({
+                dayOfWeek: day,
+                startTime: times.start,
+                endTime: times.end,
+                isActive: isActive,
+                breaks: feSchedule.breaks?.map((b: any) => ({
+                    title: b.name || 'Break',
+                    startTime: b.start,
+                    endTime: b.end
+                })) || []
+            });
+        });
+
+        return transformed;
     }
 
     async addPortfolioImage(professionalId: number, imageUrl: string, caption?: string) {

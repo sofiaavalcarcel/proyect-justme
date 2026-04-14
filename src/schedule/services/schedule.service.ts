@@ -1,16 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Schedule } from '../entities/schedule.entity';
 import { ScheduleBreak } from '../entities/schedule-break.entity';
+import { ScheduleException } from '../entities/schedule-exception.entity';
 import { Booking, BookingStatus } from '../../bookings/entities/booking.entity';
+
+import { ProfessionalsService } from '../../professionals/services/professionals.service';
 
 @Injectable()
 export class ScheduleService {
     constructor(
         @InjectRepository(Schedule) private scheduleRepo: Repository<Schedule>,
         @InjectRepository(ScheduleBreak) private breakRepo: Repository<ScheduleBreak>,
+        @InjectRepository(ScheduleException) private exceptionRepo: Repository<ScheduleException>,
         @InjectRepository(Booking) private bookingRepo: Repository<Booking>,
+        @Inject(forwardRef(() => ProfessionalsService))
+        private professionalsService: ProfessionalsService,
     ) {}
 
     async getSchedule(professionalId: number) {
@@ -46,7 +52,19 @@ export class ScheduleService {
         return this.scheduleRepo.save(schedules);
     }
 
-    async getAvailableSlots(professionalId: number, date: string) {
+    async getAvailableSlots(professionalId: number, date: string, latitude?: number, longitude?: number) {
+        // Spatial Validation
+        if (latitude !== undefined && longitude !== undefined) {
+            const { inRadius } = await this.professionalsService.isLocationInRadius(
+                professionalId,
+                latitude,
+                longitude,
+            );
+            if (!inRadius) {
+                throw new BadRequestException('Diana no presta servicios en esta ubicación específica');
+            }
+        }
+
         const dayOfWeek = this.getDayOfWeek(date);
 
         const schedule = await this.scheduleRepo.findOne({
@@ -56,14 +74,22 @@ export class ScheduleService {
 
         if (!schedule) return { date, slots: [] };
 
-        // Get existing bookings for this date
+        // Get existing bookings for this date (using both CONFIRMED and PENDING to avoid overlaps)
         const existingBookings = await this.bookingRepo.find({
-            where: {
-                professionalId,
-                date,
-                status: BookingStatus.CONFIRMED,
-            },
+            where: [
+                { professionalId, date, status: BookingStatus.CONFIRMED },
+                { professionalId, date, status: BookingStatus.PENDING },
+            ],
         });
+
+        // Get exceptions for this date
+        const exceptions = await this.exceptionRepo.find({
+            where: { professionalId, date },
+        });
+
+        // Check if there is a full day exception
+        const isFullDayOff = exceptions.some(e => e.isFullDay);
+        if (isFullDayOff) return { date, slots: [] };
 
         // Generate time slots (every 60 minutes)
         const slots = this.generateTimeSlots(
@@ -71,9 +97,26 @@ export class ScheduleService {
             schedule.endTime,
             schedule.breaks || [],
             existingBookings,
+            exceptions,
         );
 
         return { date, slots };
+    }
+
+    async addException(professionalId: number, data: Partial<ScheduleException>) {
+        const exception = this.exceptionRepo.create({
+            professionalId,
+            ...data
+        });
+        return this.exceptionRepo.save(exception);
+    }
+
+    async getExceptions(professionalId: number) {
+        return this.exceptionRepo.find({ where: { professionalId } });
+    }
+
+    async removeException(id: number) {
+        return this.exceptionRepo.delete(id);
     }
 
     private generateTimeSlots(
@@ -81,6 +124,7 @@ export class ScheduleService {
         endTime: string,
         breaks: ScheduleBreak[],
         bookings: Booking[],
+        exceptions: ScheduleException[],
     ): string[] {
         const slots: string[] = [];
         let current = this.timeToMinutes(startTime);
@@ -100,7 +144,14 @@ export class ScheduleService {
                     current < this.timeToMinutes(b.endTime),
             );
 
-            if (!isBreak && !isBooked) {
+            const isExcepted = exceptions.some(
+                (e) => 
+                    !e.isFullDay && e.startTime && e.endTime &&
+                    current >= this.timeToMinutes(e.startTime) &&
+                    current < this.timeToMinutes(e.endTime)
+            );
+
+            if (!isBreak && !isBooked && !isExcepted) {
                 slots.push(this.formatTimeDisplay(timeStr));
             }
 
