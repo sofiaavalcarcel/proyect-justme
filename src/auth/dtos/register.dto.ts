@@ -7,20 +7,30 @@ export class RegisterDto {
     @IsNotEmpty()
     readonly name: string;
 
-    @ApiPropertyOptional({ example: 'Rivera' })
+    @ApiProperty({ example: 'Rivera' })
     @IsString()
-    @IsOptional()
-    readonly lastName?: string;
+    @IsNotEmpty()
+    readonly lastName: string;
+
+    @ApiProperty({ example: 'CC' })
+    @IsString()
+    @IsNotEmpty()
+    readonly docType: string;
+
+    @ApiProperty({ example: '1020304050' })
+    @IsString()
+    @IsNotEmpty()
+    readonly docNumber: string;
 
     @ApiProperty({ example: 'santiago@justme.com' })
     @IsEmail()
     @IsNotEmpty()
     readonly email: string;
 
-    @ApiPropertyOptional({ example: '+57 310 555 1234' })
+    @ApiProperty({ example: '+57 310 555 1234' })
     @IsString()
-    @IsOptional()
-    readonly phone?: string;
+    @IsNotEmpty()
+    readonly phone: string;
 
     @ApiProperty({ example: 'SecureP@ss123' })
     @IsString()

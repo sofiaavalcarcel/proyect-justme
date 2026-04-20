@@ -76,6 +76,8 @@ export class UsersService {
     async createFromRegister(data: {
         name: string;
         lastName: string;
+        docType: string;
+        docNumber: string;
         email: string;
         phone: string;
         password: string;
@@ -90,11 +92,69 @@ export class UsersService {
         const newUser = this.userRepo.create({
             name: data.name,
             lastName: data.lastName,
+            docType: data.docType,
+            docNumber: data.docNumber,
             email: data.email,
             phone: data.phone,
             password: data.password,
             roles: [roles],
         });
+        await this.userRepo.save(newUser);
+        
+        return this.findOne(newUser.id);
+    }
+
+    async findOrCreateGoogleUser(profile: any) {
+        const { id: googleId, emails, name, photos } = profile;
+        const email = emails?.[0]?.value;
+        const firstName = name?.givenName || '';
+        const lastName = name?.familyName || '';
+        const avatar = photos?.[0]?.value || '';
+
+        // Buscar por googleId
+        let user = await this.userRepo.findOne({
+            where: { googleId },
+            relations: { roles: { modules: true } },
+        });
+
+        if (user) {
+            return user;
+        }
+
+        // Buscar por email
+        if (email) {
+            user = await this.userRepo.findOne({
+                where: { email },
+                relations: { roles: { modules: true } },
+            });
+
+            if (user) {
+                // Vincular cuenta Google
+                user.googleId = googleId;
+                if (user.provider !== 'google') {
+                    user.provider = 'google';
+                }
+                return this.userRepo.save(user);
+            }
+        }
+
+        // Crear nuevo usuario (como user por defecto)
+        let role = await this.rolesService.findByName('user');
+        if (!role) {
+            role = await this.rolesService.createSimple('user');
+        }
+
+        const newUser = this.userRepo.create({
+            googleId,
+            provider: 'google',
+            email: email || `${googleId}@google.user`,
+            name: firstName || 'Usuario',
+            lastName,
+            avatar,
+            isActive: true,
+            roles: [role],
+        });
+
         await this.userRepo.save(newUser);
         
         return this.findOne(newUser.id);
@@ -144,5 +204,26 @@ export class UsersService {
 
     deleteUser(idUser: number) {
         return this.userRepo.delete(idUser);
+    }
+
+    async setRecoveryToken(userId: number, token: string, expires: Date) {
+        await this.userRepo.update(userId, {
+            recoveryToken: token,
+            recoveryTokenExpires: expires,
+        });
+    }
+
+    async updatePassword(userId: number, hashedPassword: string) {
+        await this.userRepo.update(userId, {
+            password: hashedPassword,
+            recoveryToken: undefined as any,
+            recoveryTokenExpires: undefined as any,
+        });
+        // Limpiamos los campos de recuperación directamente con query builder
+        await this.userRepo.createQueryBuilder()
+            .update()
+            .set({ recoveryToken: () => 'NULL', recoveryTokenExpires: () => 'NULL' })
+            .where('id = :id', { id: userId })
+            .execute();
     }
 }
