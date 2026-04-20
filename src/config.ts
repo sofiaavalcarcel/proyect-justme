@@ -20,5 +20,10 @@ export default registerAs('config', () => {
             uploadDir: process.env.UPLOAD_DIR ?? './uploads',
             corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
         },
+        google: {
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            callbackUrl: process.env.GOOGLE_CALLBACK_URL,
+        },
     };
 });

@@ -30,7 +30,7 @@ export class User {
     @Column({ unique: true })
     email: string;
 
-    @Column()
+    @Column({ type: 'varchar', nullable: true })
     password: string;
 
     @Column({ type: 'varchar', length: 20, nullable: true })
@@ -42,8 +42,20 @@ export class User {
     @Column({ type: 'int', default: 0 })
     loyaltyPoints: number;
 
+    @Column({ type: 'varchar', nullable: true })
+    recoveryToken: string;
+
+    @Column({ type: 'timestamp', nullable: true })
+    recoveryTokenExpires: Date;
+
     @Column({ default: true })
     isActive: boolean;
+
+    @Column({ type: 'varchar', nullable: true })
+    googleId: string;
+
+    @Column({ type: 'varchar', default: 'local' })
+    provider: string;
 
     @Column({ type: 'text', nullable: true })
     refreshToken: string;
