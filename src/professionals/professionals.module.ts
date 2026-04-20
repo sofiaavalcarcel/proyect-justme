@@ -22,7 +22,16 @@ import { IncentiveProgram } from '../coupons/entities/incentive-program.entity';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Professional, PortfolioImage, User, Booking, Review, Wallet, Transaction, IncentiveProgram]),
+        TypeOrmModule.forFeature([
+            Professional,
+            PortfolioImage,
+            User,
+            Booking,
+            Review,
+            Wallet,
+            Transaction,
+            IncentiveProgram,
+        ]),
         forwardRef(() => ScheduleModule),
         MulterModule.register({
             storage: diskStorage({

@@ -142,4 +142,137 @@ export class AdminService {
         await this.proRepo.update(professionalId, { verified: true });
         return { success: true };
     }
+
+    async getRecentActivity(page: number = 1, limit: number = 10, filters: any = {}) {
+        const skip = (page - 1) * limit;
+        const { type, startDate, endDate } = filters;
+
+        const dateFilter = (qb: any, tableAlias: string) => {
+            if (startDate) qb.andWhere(`${tableAlias}.createdAt >= :startDate`, { startDate });
+            if (endDate) qb.andWhere(`${tableAlias}.createdAt <= :endDate`, { endDate });
+        };
+
+        const fetchUsers = async () => {
+            if (type && type !== 'registration') return [[], 0];
+            const qb = this.userRepo.createQueryBuilder('u').orderBy('u.createdAt', 'DESC');
+            dateFilter(qb, 'u');
+            return qb.getManyAndCount();
+        };
+
+        const fetchBookings = async () => {
+            if (type && type !== 'booking') return [[], 0];
+            const qb = this.bookingRepo.createQueryBuilder('b')
+                .leftJoinAndSelect('b.user', 'user')
+                .leftJoinAndSelect('b.professionalService', 'ps')
+                .leftJoinAndSelect('ps.service', 'svc')
+                .orderBy('b.createdAt', 'DESC');
+            dateFilter(qb, 'b');
+            return qb.getManyAndCount();
+        };
+
+        const [userRes, bookingRes] = await Promise.all([
+            fetchUsers(),
+            fetchBookings(),
+        ]);
+
+        const [users, userCount] = userRes as [any[], number];
+        const [bookings, bookingCount] = bookingRes as [any[], number];
+
+        const mappedUsers = users.map(u => ({
+            id: `user-${u.id}`,
+            type: 'registration',
+            title: 'Nuevo Registro',
+            description: `${u.name} ${u.lastName || ''}`.trim() + ' se ha unido a JustMe',
+            timestamp: u.createdAt,
+            userName: `${u.name} ${u.lastName || ''}`.trim(),
+            userAvatar: u.avatar,
+        }));
+
+        const mappedBookings = bookings.map(b => ({
+            id: `booking-${b.id}`,
+            type: 'booking',
+            title: 'Nueva Reserva',
+            description: `${b.user?.name || 'Un cliente'} ha reservado ${b.professionalService?.service?.name || 'un servicio'}`,
+            timestamp: b.createdAt,
+            userName: `${b.user?.name || ''} ${b.user?.lastName || ''}`.trim(),
+            userAvatar: b.user?.avatar,
+        }));
+
+        const allActivities = [...mappedUsers, ...mappedBookings]
+            .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+        const total = (userCount as number) + (bookingCount as number);
+        const data = allActivities.slice(skip, skip + limit);
+
+        return {
+            data,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit)
+        };
+    }
+
+    async getMonthlyRevenue() {
+        const months = Array.from({ length: 12 }, (_, i) => {
+            const d = new Date();
+            d.setMonth(d.getMonth() - 11 + i);
+            return { year: d.getFullYear(), month: d.getMonth() + 1, label: d.toLocaleString('es', { month: 'short' }) };
+        });
+
+        const results = await Promise.all(months.map(async ({ year, month, label }) => {
+            const start = `${year}-${String(month).padStart(2, '0')}-01`;
+            const end = new Date(year, month, 0).toISOString().split('T')[0];
+            const res = await this.bookingRepo
+                .createQueryBuilder('b')
+                .select('COALESCE(SUM(b.price), 0)', 'revenue')
+                .addSelect('COUNT(b.id)', 'bookings')
+                .where('b.date BETWEEN :start AND :end', { start, end })
+                .andWhere('b.status = :status', { status: 'completed' })
+                .getRawOne();
+            return {
+                label,
+                revenue: parseFloat(res?.revenue) || 0,
+                bookings: parseInt(res?.bookings) || 0,
+            };
+        }));
+
+        return results;
+    }
+
+    async getAnalytics() {
+        const [totalBookings, cancelledBookings, ratingResult] = await Promise.all([
+            this.bookingRepo.count(),
+            this.bookingRepo.count({ where: { status: 'cancelled' as any } }),
+            this.proRepo
+                .createQueryBuilder('p')
+                .select('AVG(p.averageRating)', 'avgRating')
+                .where('p.averageRating > 0')
+                .getRawOne(),
+        ]);
+
+        const completedBookings = await this.bookingRepo.count({ where: { status: 'completed' as any } });
+
+        // Growth: users registered in last 30 days vs previous 30 days
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+        const sixtyDaysAgo = new Date(now.getTime() - 60 * 86400000);
+        const [recentUsers, prevUsers] = await Promise.all([
+            this.userRepo.createQueryBuilder('u').where('u.createdAt >= :date', { date: thirtyDaysAgo }).getCount(),
+            this.userRepo.createQueryBuilder('u').where('u.createdAt >= :start AND u.createdAt < :end', { start: sixtyDaysAgo, end: thirtyDaysAgo }).getCount(),
+        ]);
+
+        const monthlyGrowth = prevUsers > 0 ? Math.round(((recentUsers - prevUsers) / prevUsers) * 100) : (recentUsers > 0 ? 100 : 0);
+        const bookingRate = totalBookings > 0 ? Math.round((completedBookings / totalBookings) * 100) : 0;
+        const cancelRate = totalBookings > 0 ? Math.round((cancelledBookings / totalBookings) * 100) : 0;
+
+        return {
+            avgRating: parseFloat(ratingResult?.avgRating) || 0,
+            monthlyGrowth,
+            bookingRate,
+            cancelRate,
+            totalBookings,
+            completedBookings,
+        };
+    }
 }
