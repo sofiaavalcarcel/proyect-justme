@@ -68,6 +68,29 @@ export class AdminController {
         return this.adminService.updateService(id, data);
     }
 
+    @Get('activity')
+    @ApiOperation({ summary: 'Obtener actividad reciente de la plataforma' })
+    getRecentActivity(
+        @Query() pagination: PaginationDto,
+        @Query('type') type?: string,
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string,
+    ) {
+        return this.adminService.getRecentActivity(pagination.page, pagination.limit, { type, startDate, endDate });
+    }
+
+    @Get('revenue-chart')
+    @ApiOperation({ summary: 'Obtener datos de ingresos mensuales para la gráfica' })
+    getRevenueChart() {
+        return this.adminService.getMonthlyRevenue();
+    }
+
+    @Get('analytics')
+    @ApiOperation({ summary: 'Obtener métricas de analítica de la plataforma' })
+    getAnalytics() {
+        return this.adminService.getAnalytics();
+    }
+
     @Put('professionals/:id')
     @ApiOperation({ summary: 'Actualizar perfil del profesional (Verificación/Visibilidad)' })
     updateProfessional(@Param('id', ParseIntPipe) id: number, @Body() data: any) {
