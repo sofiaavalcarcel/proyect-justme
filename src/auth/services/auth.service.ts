@@ -5,6 +5,7 @@ import { User } from '../../users/entities/user.entity';
 import { UsersService } from '../../users/services/users/users.service';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from '../dtos/register.dto';
+import { MailService } from '../../mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +13,7 @@ export class AuthService {
         private readonly usersService: UsersService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
+        private readonly mailService: MailService,
     ) {}
 
     async validateUser(email: string, password: string) {
@@ -61,9 +63,11 @@ export class AuthService {
 
         const newUser = await this.usersService.createFromRegister({
             name: registerDto.name,
-            lastName: registerDto.lastName || '',
+            lastName: registerDto.lastName,
+            docType: registerDto.docType,
+            docNumber: registerDto.docNumber,
             email: registerDto.email,
-            phone: registerDto.phone || '',
+            phone: registerDto.phone,
             password: hashedPassword,
             role: registerDto.role,
         });
@@ -97,6 +101,48 @@ export class AuthService {
     async logout(userId: number) {
         await this.usersService.updateRefreshToken(userId, null);
         return { message: 'Logged out successfully' };
+    }
+
+    async forgotPassword(email: string) {
+        let user: any;
+        try {
+            user = await this.usersService.findByEmail(email);
+        } catch {
+            // No revelar al cliente si existe o no el correo por seguridad
+            return { message: 'Si el correo está registrado, recibirás un enlace.' };
+        }
+
+        // Generar código de 6 dígitos
+        const token = Math.floor(100000 + Math.random() * 900000).toString();
+        const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+
+        await this.usersService.setRecoveryToken(user.id, token, expires);
+        await this.mailService.sendPasswordResetEmail({ name: user.name, email: user.email }, token);
+
+        return { message: 'Si el correo está registrado, recibirás un enlace.' };
+    }
+
+    async resetPassword(email: string, token: string, newPassword: string) {
+        let user: any;
+        try {
+            user = await this.usersService.findByEmail(email);
+        } catch {
+            throw new UnauthorizedException('Datos inválidos');
+        }
+
+        if (
+            !user.recoveryToken ||
+            user.recoveryToken !== token ||
+            !user.recoveryTokenExpires ||
+            new Date() > new Date(user.recoveryTokenExpires)
+        ) {
+            throw new UnauthorizedException('El código es inválido o ha expirado');
+        }
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+        await this.usersService.updatePassword(user.id, hashed);
+
+        return { message: 'Contraseña actualizada correctamente' };
     }
 
     private async generateTokens(payload: { sub: number; email: string; roles: string[] }) {

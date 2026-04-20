@@ -28,6 +28,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { CouponsModule } from './coupons/coupons.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
     imports: [
@@ -75,6 +76,7 @@ import { AdminModule } from './admin/admin.module';
         CouponsModule,
         NotificationsModule,
         AdminModule,
+        MailModule,
     ],
     controllers: [AppController],
     providers: [
