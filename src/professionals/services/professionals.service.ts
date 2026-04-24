@@ -5,6 +5,7 @@ import { Professional } from '../entities/professional.entity';
 import { PortfolioImage } from '../entities/portfolio-image.entity';
 import { User } from '../../users/entities/user.entity';
 import { CreateProfessionalDto, UpdateProfessionalDto, NearbySearchDto, ServiceMatchDto } from '../dtos/professional.dto';
+import { SearchProfessionalsDto } from '../dtos/search-professionals.dto';
 import { ScheduleService } from '../../schedule/services/schedule.service';
 
 @Injectable()
@@ -236,6 +237,45 @@ export class ProfessionalsService {
             inRadius: distance <= pro.serviceRadius,
             distance
         };
+    }
+
+    async searchByLocation(dto: SearchProfessionalsDto) {
+        const { latitude, longitude, radiusKm, sector, limit = 10, offset = 0 } = dto;
+        const radiusMeters = radiusKm * 1000;
+
+        const queryBuilder = this.proRepo.createQueryBuilder('pro')
+            .leftJoinAndSelect('pro.user', 'user')
+            .leftJoinAndSelect('pro.professionalServices', 'ps')
+            .leftJoinAndSelect('ps.service', 'service')
+            .where('pro.isVisible = :visible', { visible: true });
+
+        if (sector) {
+            queryBuilder.andWhere('service.name ILIKE :sector', { sector: `%${sector}%` });
+        }
+
+        queryBuilder.andWhere(
+            `ST_DistanceSphere(ST_MakePoint(pro.longitude, pro.latitude), ST_MakePoint(:longitude, :latitude)) <= :radiusMeters`,
+            { longitude, latitude, radiusMeters }
+        );
+
+        queryBuilder.addSelect(
+            `ST_DistanceSphere(ST_MakePoint(pro.longitude, pro.latitude), ST_MakePoint(:longitude, :latitude)) / 1000`,
+            'distance_km'
+        );
+
+        queryBuilder.orderBy('distance_km', 'ASC');
+        queryBuilder.take(limit).skip(offset);
+
+        const { entities, raw } = await queryBuilder.getRawAndEntities();
+
+        const data = entities.map((pro, index) => ({
+            ...pro,
+            distanceKm: parseFloat(raw[index].distance_km).toFixed(2),
+        }));
+
+        const total = await queryBuilder.getCount();
+
+        return { data, total, limit, offset };
     }
 
     async findOne(id: number) {
