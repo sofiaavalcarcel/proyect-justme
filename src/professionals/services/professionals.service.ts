@@ -294,12 +294,22 @@ export class ProfessionalsService {
         if (schedule) {
             const transformedSchedule = this.transformFrontendSchedule(schedule);
             await this.scheduleService.setSchedule(id, transformedSchedule);
+            
+            // Explicitly capture preferences from the nested schedule object
+            if (schedule.maxAppointments !== undefined) professional.maxAppointments = schedule.maxAppointments;
+            if (schedule.bufferTime !== undefined) professional.bufferTime = schedule.bufferTime;
+            if (schedule.advanceNotice !== undefined) professional.advanceNotice = schedule.advanceNotice;
         }
 
         // 4. Update professional entity with remaining fields
-        if (Object.keys(proData).length > 0) {
-            await this.proRepo.update(id, proData);
-        }
+        Object.keys(proData).forEach(key => {
+            if (proData[key] === undefined) {
+                delete proData[key];
+            }
+        });
+        
+        Object.assign(professional, proData);
+        await this.proRepo.save(professional);
 
         return this.findOne(id);
     }

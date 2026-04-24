@@ -8,6 +8,8 @@ import { APP_GUARD } from '@nestjs/core';
 import * as Joi from 'joi';
 import { enviroments } from './enviroments';
 import config from './config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 // Core modules
 import { UsersModule } from './users/users.module';

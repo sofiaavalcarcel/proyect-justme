@@ -15,7 +15,22 @@ export class ServicesService {
 
     // Service categories
     async findAllCategories() {
-        return this.serviceRepo.find();
+        try {
+            const categories = await this.serviceRepo.find();
+            if (categories.length === 0) {
+                const defaultCat = this.serviceRepo.create({ 
+                    name: 'Belleza y Bienestar', 
+                    category: 'Belleza',
+                    description: 'Categoría general para servicios de belleza' 
+                });
+                await this.serviceRepo.save(defaultCat);
+                return [defaultCat];
+            }
+            return categories;
+        } catch (error) {
+            console.error('Error in findAllCategories:', error);
+            throw new Error(`Failed to fetch/seed categories: ${error.message}`);
+        }
     }
 
     async findCategoryById(id: number) {
@@ -44,11 +59,27 @@ export class ServicesService {
     }
 
     async addProfessionalService(professionalId: number, dto: CreateProfessionalServiceDto) {
-        const service = this.proServiceRepo.create({
-            professionalId,
-            ...dto,
-        });
-        return this.proServiceRepo.save(service);
+        try {
+            // Ensure the serviceId exists to avoid Foreign Key errors
+            let targetServiceId = dto.serviceId;
+            const serviceExists = await this.serviceRepo.findOne({ where: { id: targetServiceId } });
+            
+            if (!serviceExists) {
+                // Fallback to the first available category
+                const firstCategory = await this.findAllCategories(); 
+                targetServiceId = firstCategory[0].id;
+            }
+
+            const service = this.proServiceRepo.create({
+                professionalId,
+                ...dto,
+                serviceId: targetServiceId,
+            });
+            return await this.proServiceRepo.save(service);
+        } catch (error) {
+            console.error('Error in addProfessionalService:', error);
+            throw new Error(`Failed to add service: ${error.message}`);
+        }
     }
 
     async updateProfessionalService(id: number, dto: UpdateProfessionalServiceDto) {

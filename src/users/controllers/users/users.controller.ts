@@ -1,6 +1,7 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, UseGuards, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiOperation, ApiTags, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { Modules } from '../../../auth/decorators/modules.decorator';
 import { ModulesGuard } from '../../../auth/guards/modules.guard.guard';
 import { OwnershipGuard } from '../../../common/guards/ownership.guard';
@@ -48,6 +49,19 @@ export class UsersController {
     @ApiResponse({ status: 403, description: 'No tienes permiso para modificar esta cuenta' })
     updateUser(@Param('userId', ParseIntPipe) userId: number, @Body() payloadUpdated: UpdateUserDto){
         return this.usersService.updateUser(userId, payloadUpdated);
+    }
+
+    @Post(':userId/avatar')
+    @UseGuards(JwtAuthGuard, OwnershipGuard)
+    @UseInterceptors(FileInterceptor('image'))
+    @ApiConsumes('multipart/form-data')
+    @ApiOperation({ summary: 'Subir avatar de usuario' })
+    async uploadAvatar(
+        @Param('userId', ParseIntPipe) userId: number,
+        @UploadedFile() file: Express.Multer.File,
+    ) {
+        const imageUrl = `/uploads/avatars/${file?.filename || 'default-avatar.jpg'}`;
+        return this.usersService.updateAvatar(userId, imageUrl);
     }
 
     @Delete(':userId')

@@ -10,14 +10,17 @@ import {
 } from 'typeorm';
 
 
+import { Professional } from '../../professionals/entities/professional.entity';
+import { Transaction } from './transaction.entity';
+
 @Entity('wallets')
 export class Wallet {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @OneToOne('Professional', 'wallet', { onDelete: 'CASCADE' })
+    @OneToOne(() => Professional, (pro) => pro.wallet, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'professionalId' })
-    professional: any;
+    professional: Professional;
 
     @Column()
     professionalId: number;
@@ -34,6 +37,6 @@ export class Wallet {
     @UpdateDateColumn()
     updatedAt: Date;
 
-    @OneToMany('Transaction', 'wallet')
-    transactions: any[];
+    @OneToMany(() => Transaction, (txn) => txn.wallet)
+    transactions: Transaction[];
 }
