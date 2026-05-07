@@ -57,6 +57,10 @@ import { MailModule } from './mail/mail.module';
             ttl: 60000,
             limit: 100,
         }]),
+        ServeStaticModule.forRoot({
+            rootPath: join(__dirname, '..', 'uploads'),
+            serveRoot: '/uploads',
+        }),
         DatabaseModule,
 
         // Core

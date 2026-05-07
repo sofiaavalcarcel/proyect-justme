@@ -221,6 +221,9 @@ export class ProfessionalsService {
     async isLocationInRadius(proId: number, lat: number, lng: number): Promise<{ inRadius: boolean; distance: number }> {
         const pro = await this.proRepo.findOne({ where: { id: proId } });
         if (!pro) return { inRadius: false, distance: 0 };
+        if (pro.latitude === null || pro.longitude === null) {
+            return { inRadius: true, distance: 0 }; 
+        }
 
         // Use a more robust raw query for the distance calculation
         const result = await this.proRepo.query(
@@ -309,6 +312,15 @@ export class ProfessionalsService {
         });
         
         Object.assign(professional, proData);
+
+        // Remove relations from memory to prevent TypeORM cascading updates on deleted entities
+        const proAny = professional as any;
+        delete proAny.schedules;
+        delete proAny.user;
+        delete proAny.professionalServices;
+        delete proAny.portfolioImages;
+        delete proAny.reviews;
+
         await this.proRepo.save(professional);
 
         return this.findOne(id);

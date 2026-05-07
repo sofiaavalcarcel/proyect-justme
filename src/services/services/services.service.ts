@@ -92,4 +92,10 @@ export class ServicesService {
     async removeProfessionalService(id: number) {
         return this.proServiceRepo.delete(id);
     }
+
+    async findOne(id: number) {
+        const service = await this.proServiceRepo.findOne({ where: { id } });
+        if (!service) throw new NotFoundException(`Professional service #${id} not found`);
+        return service;
+    }
 }

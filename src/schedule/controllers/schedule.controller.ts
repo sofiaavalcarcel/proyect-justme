@@ -33,10 +33,11 @@ export class ScheduleController {
     getAvailableSlots(
         @Param('professionalId', ParseIntPipe) professionalId: number,
         @Query('date') date: string,
+        @Query('serviceId') serviceId?: number,
         @Query('latitude') latitude?: number,
         @Query('longitude') longitude?: number,
     ) {
-        return this.scheduleService.getAvailableSlots(professionalId, date, latitude, longitude);
+        return this.scheduleService.getAvailableSlots(professionalId, date, serviceId, latitude, longitude);
     }
 
     @Get(':professionalId/exceptions')

@@ -80,8 +80,8 @@ export class BookingsService {
         const professional = await this.professionalsService.findOne(dto.professionalId);
         await this.notificationsService.send(
             professional.userId,
-            'New Booking',
-            `You have a new booking for ${proService.service?.name} on ${dto.date} at ${dto.startTime}`,
+            'Nueva Reserva',
+            `Tienes una nueva reserva para ${proService.service?.name || 'servicio'} el ${dto.date} a las ${dto.startTime}`,
             NotificationType.BOOKING,
             { bookingId: saved.id },
         );
