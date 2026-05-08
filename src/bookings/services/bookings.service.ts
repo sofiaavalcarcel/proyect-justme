@@ -71,10 +71,13 @@ export class BookingsService {
             locationType: dto.locationType,
             latitude: dto.latitude,
             longitude: dto.longitude,
-            status: BookingStatus.CONFIRMED,
+            status: BookingStatus.PENDING,
         });
 
-        const saved = await this.bookingRepo.save(booking);
+        const saved = await this.bookingRepo.save({
+            ...booking,
+            status: BookingStatus.PENDING,
+        });
 
         // Notify professional
         const professional = await this.professionalsService.findOne(dto.professionalId);
