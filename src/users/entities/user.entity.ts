@@ -57,6 +57,14 @@ export class User {
     @Column({ type: 'varchar', default: 'local' })
     provider: string;
 
+    @Column({ type: 'jsonb', nullable: true, default: [] })
+    addresses: any[];
+
+    @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+    latitude: number;
+
+    @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
+    longitude: number;
     @Column({ type: 'text', nullable: true })
     refreshToken: string;
 

@@ -6,6 +6,7 @@ import { join } from 'path';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
+import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
 
 async function bootstrap() {
     const logger = new Logger('Bootstrap');
@@ -57,6 +58,9 @@ async function bootstrap() {
 
     // 4. API Prefix
     app.setGlobalPrefix('api');
+
+    // 4.5 Global Interceptors
+    app.useGlobalInterceptors(new TransformResponseInterceptor());
 
     // 5. Swagger Documentation
     const config = new DocumentBuilder()

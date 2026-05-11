@@ -226,7 +226,6 @@ export class UsersService {
             .where('id = :id', { id: userId })
             .execute();
     }
-
     async updateAvatar(userId: number, avatarUrl: string) {
         const user = await this.userRepo.findOne({ where: { id: userId } });
         if (!user) throw new NotFoundException('User not found');
