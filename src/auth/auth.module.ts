@@ -10,6 +10,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
 import { ConfigType } from '@nestjs/config';
 import config from '../config';
 import { ModulesGuard } from './guards/modules.guard.guard';
+import { RolesGuard } from './guards/roles.guard';
 import { JwtAuthGuard } from './guards/auth.guard';
 import { MailModule } from '../mail/mail.module';
 
@@ -26,8 +27,8 @@ import { MailModule } from '../mail/mail.module';
             }),
         }),
     ],
-    providers: [AuthService, ModulesGuard, JwtAuthGuard, JwtStrategy, JwtRefreshStrategy, GoogleStrategy],
+    providers: [AuthService, ModulesGuard, RolesGuard, JwtAuthGuard, JwtStrategy, JwtRefreshStrategy, GoogleStrategy],
     controllers: [AuthController],
-    exports: [AuthService, ModulesGuard, JwtAuthGuard],
+    exports: [AuthService, ModulesGuard, RolesGuard, JwtAuthGuard],
 })
 export class AuthModule {}

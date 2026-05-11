@@ -52,7 +52,7 @@ export class ScheduleService {
         return this.scheduleRepo.save(schedules);
     }
 
-    async getAvailableSlots(professionalId: number, date: string, latitude?: number, longitude?: number) {
+    async getAvailableSlots(professionalId: number, date: string, serviceDuration: number = 60, latitude?: number, longitude?: number) {
         // Spatial Validation
         if (latitude !== undefined && longitude !== undefined) {
             const { inRadius } = await this.professionalsService.isLocationInRadius(
@@ -91,13 +91,26 @@ export class ScheduleService {
         const isFullDayOff = exceptions.some(e => e.isFullDay);
         if (isFullDayOff) return { date, slots: [] };
 
-        // Generate time slots (every 60 minutes)
+        // Get professional buffer time
+        let bufferTime = 15; // default 15 mins
+        try {
+            const professional = await this.professionalsService.findOne(professionalId);
+            if (professional && professional.bufferTime !== undefined) {
+                bufferTime = professional.bufferTime;
+            }
+        } catch (e) {
+            // ignore if not found
+        }
+        const totalDuration = serviceDuration + bufferTime;
+
+        // Generate time slots with total duration
         const slots = this.generateTimeSlots(
             schedule.startTime,
             schedule.endTime,
             schedule.breaks || [],
             existingBookings,
             exceptions,
+            totalDuration,
         );
 
         return { date, slots };
@@ -125,37 +138,44 @@ export class ScheduleService {
         breaks: ScheduleBreak[],
         bookings: Booking[],
         exceptions: ScheduleException[],
+        serviceDuration: number = 60,
     ): string[] {
         const slots: string[] = [];
+        const step = 30; // 30-minute granularity for more flexible slot options
         let current = this.timeToMinutes(startTime);
         const end = this.timeToMinutes(endTime);
 
-        while (current + 60 <= end) {
+        while (current + serviceDuration <= end) {
+            const slotEnd = current + serviceDuration;
             const timeStr = this.minutesToTime(current);
+
+            // Check if ANY minute of the block falls into a break
             const isBreak = breaks.some(
                 (b) =>
-                    current >= this.timeToMinutes(b.startTime) &&
-                    current < this.timeToMinutes(b.endTime),
+                    current < this.timeToMinutes(b.endTime) &&
+                    slotEnd > this.timeToMinutes(b.startTime),
             );
 
+            // Check if ANY minute of the block overlaps with an existing booking
             const isBooked = bookings.some(
                 (b) =>
-                    current >= this.timeToMinutes(b.startTime) &&
-                    current < this.timeToMinutes(b.endTime),
+                    current < this.timeToMinutes(b.endTime) &&
+                    slotEnd > this.timeToMinutes(b.startTime),
             );
 
+            // Check exceptions
             const isExcepted = exceptions.some(
                 (e) => 
                     !e.isFullDay && e.startTime && e.endTime &&
-                    current >= this.timeToMinutes(e.startTime) &&
-                    current < this.timeToMinutes(e.endTime)
+                    current < this.timeToMinutes(e.endTime) &&
+                    slotEnd > this.timeToMinutes(e.startTime)
             );
 
             if (!isBreak && !isBooked && !isExcepted) {
                 slots.push(this.formatTimeDisplay(timeStr));
             }
 
-            current += 60; // 1 hour slots
+            current += step; // Advance by 30 mins
         }
 
         return slots;

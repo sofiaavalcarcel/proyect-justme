@@ -20,7 +20,6 @@ export class ProfessionalsService {
 
     async findNearby(dto: NearbySearchDto) {
         const radius = dto.radius || 5; // km
-        const radiusInDegrees = radius / 111.32; // approximate conversion
 
         let query = this.proRepo
             .createQueryBuilder('professional')
@@ -31,9 +30,10 @@ export class ProfessionalsService {
             .where('professional.isVisible = :visible', { visible: true })
             .andWhere('professional.latitude IS NOT NULL')
             .andWhere('professional.longitude IS NOT NULL')
+            // ── Haversine SQL approximation (PostGIS fallback) ──
             .andWhere(
-                `ABS(professional.latitude - :lat) < :radiusInDegrees AND ABS(professional.longitude - :lng) < :radiusInDegrees`,
-                { lat: dto.latitude, lng: dto.longitude, radiusInDegrees },
+                `(6371 * acos(least(1.0, cos(radians(CAST(:lat AS float))) * cos(radians(CAST(professional.latitude AS float))) * cos(radians(CAST(professional.longitude AS float)) - radians(CAST(:lng AS float))) + sin(radians(CAST(:lat AS float))) * sin(radians(CAST(professional.latitude AS float)))))) <= :radius`,
+                { lat: dto.latitude, lng: dto.longitude, radius },
             );
 
         if (dto.service) {
@@ -104,27 +104,23 @@ export class ProfessionalsService {
             });
         }
 
-        const professionals = await query
+        // ── Add distance as a calculated column ──
+        query.addSelect(
+            `(6371 * acos(least(1.0, cos(radians(CAST(:lat AS float))) * cos(radians(CAST(professional.latitude AS float))) * cos(radians(CAST(professional.longitude AS float)) - radians(CAST(:lng AS float))) + sin(radians(CAST(:lat AS float))) * sin(radians(CAST(professional.latitude AS float))))))`,
+            'distance_km',
+        );
+
+        // ── Sort: best rating first, then closest ──
+        query
             .orderBy('professional.averageRating', 'DESC')
-            .addOrderBy('professional.completedServices', 'DESC')
-            .getMany();
+            .addOrderBy('distance_km', 'ASC');
 
-        // Calculate actual distance, sort and obfuscate location for privacy
-        let result = professionals.map((pro) => {
-            const distance = this.calculateDistance(
-                dto.latitude,
-                dto.longitude,
-                Number(pro.latitude),
-                Number(pro.longitude),
-            );
-            
-            return { 
-                ...pro, 
-                distance: Math.round(distance * 10) / 10 
-            };
-        }).filter(pro => pro.distance <= radius);
+        const { entities, raw } = await query.getRawAndEntities();
 
-        return result.sort((a, b) => a.distance - b.distance);
+        return entities.map((pro, i) => ({
+            ...pro,
+            distance: parseFloat(parseFloat(raw[i]?.distance_km || '0').toFixed(1)),
+        }));
     }
 
     async matchByService(dto: ServiceMatchDto) {
@@ -141,7 +137,7 @@ export class ProfessionalsService {
             .andWhere('ps.serviceId = :serviceId', { serviceId })
             .andWhere('ps.isActive = :active', { active: true })
             .andWhere(
-                'ST_DistanceSphere(ST_MakePoint(professional.longitude, professional.latitude), ST_MakePoint(:lng, :lat)) / 1000 <= professional.serviceRadius',
+                '(6371 * acos(least(1.0, cos(radians(CAST(:lat AS float))) * cos(radians(CAST(professional.latitude AS float))) * cos(radians(CAST(professional.longitude AS float)) - radians(CAST(:lng AS float))) + sin(radians(CAST(:lat AS float))) * sin(radians(CAST(professional.latitude AS float)))))) <= professional.serviceRadius',
                 { lat: latitude, lng: longitude }
             );
 
@@ -225,7 +221,7 @@ export class ProfessionalsService {
 
         // Use a more robust raw query for the distance calculation
         const result = await this.proRepo.query(
-            `SELECT ST_DistanceSphere(ST_MakePoint(longitude, latitude), ST_MakePoint($1, $2)) / 1000 AS distance 
+            `SELECT (6371 * acos(least(1.0, cos(radians(CAST($2 AS float))) * cos(radians(CAST(latitude AS float))) * cos(radians(CAST(longitude AS float)) - radians(CAST($1 AS float))) + sin(radians(CAST($2 AS float))) * sin(radians(CAST(latitude AS float)))))) AS distance 
              FROM professionals WHERE id = $3`,
             [lng, lat, proId]
         );
@@ -254,12 +250,12 @@ export class ProfessionalsService {
         }
 
         queryBuilder.andWhere(
-            `ST_DistanceSphere(ST_MakePoint(pro.longitude, pro.latitude), ST_MakePoint(:longitude, :latitude)) <= :radiusMeters`,
+            `(6371 * acos(least(1.0, cos(radians(CAST(:latitude AS float))) * cos(radians(CAST(pro.latitude AS float))) * cos(radians(CAST(pro.longitude AS float)) - radians(CAST(:longitude AS float))) + sin(radians(CAST(:latitude AS float))) * sin(radians(CAST(pro.latitude AS float)))))) * 1000 <= :radiusMeters`,
             { longitude, latitude, radiusMeters }
         );
 
         queryBuilder.addSelect(
-            `ST_DistanceSphere(ST_MakePoint(pro.longitude, pro.latitude), ST_MakePoint(:longitude, :latitude)) / 1000`,
+            `(6371 * acos(least(1.0, cos(radians(CAST(:latitude AS float))) * cos(radians(CAST(pro.latitude AS float))) * cos(radians(CAST(pro.longitude AS float)) - radians(CAST(:longitude AS float))) + sin(radians(CAST(:latitude AS float))) * sin(radians(CAST(pro.latitude AS float))))))`,
             'distance_km'
         );
 
