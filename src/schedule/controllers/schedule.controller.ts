@@ -29,15 +29,22 @@ export class ScheduleController {
     }
 
     @Get(':professionalId/available-slots')
-    @ApiOperation({ summary: 'Obtener los horarios disponibles para una fecha y ubicación' })
+    @ApiOperation({ summary: 'Obtener los horarios disponibles para una fecha, duración de servicio y ubicación' })
     getAvailableSlots(
         @Param('professionalId', ParseIntPipe) professionalId: number,
         @Query('date') date: string,
         @Query('serviceId') serviceId?: number,
+        @Query('serviceDuration') serviceDuration?: number,
         @Query('latitude') latitude?: number,
         @Query('longitude') longitude?: number,
     ) {
-        return this.scheduleService.getAvailableSlots(professionalId, date, serviceId, latitude, longitude);
+        return this.scheduleService.getAvailableSlots(
+            professionalId, 
+            date, 
+            serviceId ? +serviceId : undefined, 
+            latitude ? +latitude : undefined, 
+            serviceDuration ? +serviceDuration : 60
+        );
     }
 
     @Get(':professionalId/exceptions')

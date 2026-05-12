@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsArray, ArrayNotEmpty, IsInt, IsBoolean, IsOptional, IsEmail } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, ArrayNotEmpty, IsInt, IsBoolean, IsOptional, IsEmail, IsNumber } from 'class-validator';
 import { PartialType, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -54,6 +54,22 @@ export class CreateUserDto {
     @Type(() => Number)
     @ApiProperty({ type: [Number] })
     readonly roleIds: number[];
+    @IsArray()
+    @IsOptional()
+    @ApiPropertyOptional()
+    readonly addresses?: any[];
+
+    @IsOptional()
+    @IsNumber()
+    @Type(() => Number)
+    @ApiPropertyOptional()
+    readonly latitude?: number;
+
+    @IsOptional()
+    @IsNumber()
+    @Type(() => Number)
+    @ApiPropertyOptional()
+    readonly longitude?: number;
 }
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {}

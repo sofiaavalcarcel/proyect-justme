@@ -79,7 +79,8 @@ export class ScheduleService {
         date: string, 
         serviceId?: number, 
         latitude?: number, 
-        longitude?: number
+        longitude?: number,
+        serviceDuration: number = 60
     ) {
         // Spatial Validation
         if (latitude !== undefined && longitude !== undefined) {
@@ -103,7 +104,7 @@ export class ScheduleService {
         if (!schedule) return { date, slots: [] };
 
         // Determine dynamic duration
-        let duration = 60; // Default: 1 hour
+        let duration = serviceDuration; 
         let bufferTime = 15; // Default: 15 mins
 
         const professional = await this.professionalsService.findOne(professionalId);
@@ -118,12 +119,12 @@ export class ScheduleService {
                     duration = Number(proService.duration);
                 }
             } catch (e) {
-                // Ignore if service not found, use default
+                // Ignore if service not found, use provided duration
             }
         }
 
         // The slot step is duration + buffer
-        const step = duration + bufferTime;
+        const totalDuration = duration + bufferTime;
 
         // Get existing bookings for this date
         const existingBookings = await this.bookingRepo.find({
@@ -149,7 +150,7 @@ export class ScheduleService {
             schedule.breaks || [],
             existingBookings,
             exceptions,
-            step,
+            totalDuration,
         );
 
         return { date, slots };
@@ -177,46 +178,44 @@ export class ScheduleService {
         breaks: ScheduleBreak[],
         bookings: Booking[],
         exceptions: ScheduleException[],
-        step: number,
+        serviceDuration: number = 60,
     ): string[] {
         const slots: string[] = [];
+        const step = 30; // 30-minute granularity for more flexible slot options
         let current = this.timeToMinutes(startTime);
         const end = this.timeToMinutes(endTime);
 
-        // Ensure we don't start in the past if date is today
-        // (This could be added as a further improvement)
-
-        while (current + step <= end) {
+        while (current + serviceDuration <= end) {
+            const slotEnd = current + serviceDuration;
             const timeStr = this.minutesToTime(current);
-            const slotEnd = current + step;
 
+            // Check if ANY minute of the block falls into a break
             const isBreak = breaks.some(
                 (b) =>
-                    (current >= this.timeToMinutes(b.startTime) && current < this.timeToMinutes(b.endTime)) ||
-                    (slotEnd > this.timeToMinutes(b.startTime) && slotEnd <= this.timeToMinutes(b.endTime)) ||
-                    (current <= this.timeToMinutes(b.startTime) && slotEnd >= this.timeToMinutes(b.endTime))
+                    current < this.timeToMinutes(b.endTime) &&
+                    slotEnd > this.timeToMinutes(b.startTime),
             );
 
+            // Check if ANY minute of the block overlaps with an existing booking
             const isBooked = bookings.some(
                 (b) =>
-                    (current >= this.timeToMinutes(b.startTime) && current < this.timeToMinutes(b.endTime)) ||
-                    (slotEnd > this.timeToMinutes(b.startTime) && slotEnd <= this.timeToMinutes(b.endTime)) ||
-                    (current <= this.timeToMinutes(b.startTime) && slotEnd >= this.timeToMinutes(b.endTime))
+                    current < this.timeToMinutes(b.endTime) &&
+                    slotEnd > this.timeToMinutes(b.startTime),
             );
 
+            // Check exceptions
             const isExcepted = exceptions.some(
                 (e) => 
                     !e.isFullDay && e.startTime && e.endTime &&
-                    ((current >= this.timeToMinutes(e.startTime) && current < this.timeToMinutes(e.endTime)) ||
-                     (slotEnd > this.timeToMinutes(e.startTime) && slotEnd <= this.timeToMinutes(e.endTime)) ||
-                     (current <= this.timeToMinutes(e.startTime) && slotEnd >= this.timeToMinutes(e.endTime)))
+                    current < this.timeToMinutes(e.endTime) &&
+                    slotEnd > this.timeToMinutes(e.startTime)
             );
 
             if (!isBreak && !isBooked && !isExcepted) {
                 slots.push(this.formatTimeDisplay(timeStr));
             }
 
-            // We advance by the step (duration + buffer)
+            // Advance by the granularity step
             current += step;
         }
 

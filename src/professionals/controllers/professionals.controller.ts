@@ -10,6 +10,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ProfessionalsService } from '../services/professionals.service';
 import { CreateProfessionalDto, UpdateProfessionalDto, NearbySearchDto, ServiceMatchDto } from '../dtos/professional.dto';
+import { SearchProfessionalsDto } from '../dtos/search-professionals.dto';
 
 @ApiTags('Profesionales')
 @Controller('professionals')
@@ -20,6 +21,14 @@ export class ProfessionalsController {
     @ApiOperation({ summary: 'Encontrar profesionales cerca de una ubicación' })
     findNearby(@Query() query: NearbySearchDto) {
         return this.professionalsService.findNearby(query);
+    }
+
+    @Get('search')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('USER', 'ADMIN') // Roles allowed
+    @ApiOperation({ summary: 'Búsqueda avanzada de profesionales usando PostGIS' })
+    searchByLocation(@Query() searchDto: SearchProfessionalsDto) {
+        return this.professionalsService.searchByLocation(searchDto);
     }
 
     @Get('search/match')
