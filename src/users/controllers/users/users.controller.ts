@@ -13,13 +13,13 @@ import { JwtAuthGuard } from '../../../auth/guards/auth.guard';
 
 @ApiTags('Usuarios')
 @ApiBearerAuth()
-@Modules('users')
 @Controller('users')
 export class UsersController {
 
     constructor(private usersService: UsersService){}
 
     @Get()
+    @Modules('users')
     @UseGuards(JwtAuthGuard, ModulesGuard, RolesGuard)
     @Roles('admin') // Solo un admin debería poder listar TODOS los usuarios
     @ApiOperation({ summary: 'Obtener todos los usuarios (Solo Admin)' })
@@ -28,7 +28,7 @@ export class UsersController {
     }
 
     @Get(':userId')
-    @UseGuards(JwtAuthGuard, ModulesGuard, OwnershipGuard)
+    @UseGuards(JwtAuthGuard, OwnershipGuard)
     @ApiOperation({ summary: 'Obtener perfil de un usuario específico' })
     @ApiResponse({ status: 403, description: 'No tienes permiso para ver esta cuenta' })
     getOne(@Param('userId', ParseIntPipe) userId: number){
@@ -36,6 +36,7 @@ export class UsersController {
     }
 
     @Post()
+    @Modules('users')
     @UseGuards(JwtAuthGuard, ModulesGuard, RolesGuard)
     @Roles('admin') // Asumimos que la creación libre por API la hace un admin (el público usa /auth/register)
     @ApiOperation({ summary: 'Crear un nuevo usuario manualmente (Solo Admin)' })
@@ -44,7 +45,7 @@ export class UsersController {
     }
 
     @Put(':userId')
-    @UseGuards(JwtAuthGuard, ModulesGuard, OwnershipGuard)
+    @UseGuards(JwtAuthGuard, OwnershipGuard)
     @ApiOperation({ summary: 'Actualizar datos de un usuario' })
     @ApiResponse({ status: 403, description: 'No tienes permiso para modificar esta cuenta' })
     updateUser(@Param('userId', ParseIntPipe) userId: number, @Body() payloadUpdated: UpdateUserDto){
@@ -65,7 +66,7 @@ export class UsersController {
     }
 
     @Delete(':userId')
-    @UseGuards(JwtAuthGuard, ModulesGuard, OwnershipGuard)
+    @UseGuards(JwtAuthGuard, OwnershipGuard)
     @ApiOperation({ summary: 'Eliminar una cuenta de usuario' })
     @ApiResponse({ status: 403, description: 'No tienes permiso para eliminar esta cuenta' })
     deleteUser(@Param('userId', ParseIntPipe) userId: number){

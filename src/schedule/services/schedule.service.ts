@@ -139,9 +139,37 @@ export class ScheduleService {
             where: { professionalId, date },
         });
 
-        // Check if there is a full day exception
         const isFullDayOff = exceptions.some(e => e.isFullDay);
-        if (isFullDayOff) return { date, slots: [] };
+        if (isFullDayOff) {
+            console.log(`[Schedule] Full day off for date ${date}`);
+            return { date, slots: [] };
+        }
+
+        // 1. NEW: Check Maximum Daily Appointments
+        const maxAppts = professional.maxAppointments !== undefined ? Number(professional.maxAppointments) : 8;
+        if (existingBookings.length >= maxAppts) {
+            console.log(`[Schedule] Max appts reached (${existingBookings.length}/${maxAppts}) for ${date}`);
+            return { date, slots: [] };
+        }
+
+        console.log(`[Schedule] Generating slots for ${date}. Working Hours: ${schedule.startTime}-${schedule.endTime}`);
+
+        // 2. NEW: Check Advance Notice (if date is today)
+        let minTimeInMinutes = -1;
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (date === todayStr) {
+            const now = new Date();
+            // Use server time or professional's timezone if applicable. For now, server local.
+            const advanceNoticeHours = professional.advanceNotice !== undefined ? Number(professional.advanceNotice) : 2;
+            const minTime = new Date(now.getTime() + advanceNoticeHours * 60 * 60 * 1000);
+            
+            // If the calculated minTime is already on a different day, no slots available today
+            if (minTime.toISOString().split('T')[0] !== todayStr) {
+                return { date, slots: [] };
+            }
+            
+            minTimeInMinutes = minTime.getHours() * 60 + minTime.getMinutes();
+        }
 
         // Generate time slots
         const slots = this.generateTimeSlots(
@@ -151,6 +179,8 @@ export class ScheduleService {
             existingBookings,
             exceptions,
             totalDuration,
+            minTimeInMinutes,
+            bufferTime,
         );
 
         return { date, slots };
@@ -179,6 +209,8 @@ export class ScheduleService {
         bookings: Booking[],
         exceptions: ScheduleException[],
         serviceDuration: number = 60,
+        minTimeInMinutes: number = -1,
+        bufferTime: number = 0,
     ): string[] {
         const slots: string[] = [];
         const step = 30; // 30-minute granularity for more flexible slot options
@@ -186,6 +218,12 @@ export class ScheduleService {
         const end = this.timeToMinutes(endTime);
 
         while (current + serviceDuration <= end) {
+            // NEW: Skip slots before advance notice minimum time
+            if (minTimeInMinutes !== -1 && current < minTimeInMinutes) {
+                current += step;
+                continue;
+            }
+            
             const slotEnd = current + serviceDuration;
             const timeStr = this.minutesToTime(current);
 
@@ -197,9 +235,10 @@ export class ScheduleService {
             );
 
             // Check if ANY minute of the block overlaps with an existing booking
+            // ADDED: We extend the booking's end time by the bufferTime to guarantee the break
             const isBooked = bookings.some(
                 (b) =>
-                    current < this.timeToMinutes(b.endTime) &&
+                    current < (this.timeToMinutes(b.endTime) + bufferTime) &&
                     slotEnd > this.timeToMinutes(b.startTime),
             );
 

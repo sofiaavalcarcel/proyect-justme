@@ -43,6 +43,7 @@ export class ScheduleController {
             date, 
             serviceId ? +serviceId : undefined, 
             latitude ? +latitude : undefined, 
+            longitude ? +longitude : undefined,
             serviceDuration ? +serviceDuration : 60
         );
     }
