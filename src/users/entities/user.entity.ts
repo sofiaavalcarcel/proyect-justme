@@ -65,7 +65,6 @@ export class User {
 
     @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
     longitude: number;
-
     @Column({ type: 'text', nullable: true })
     refreshToken: string;
 

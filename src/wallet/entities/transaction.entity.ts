@@ -8,6 +8,8 @@ import {
 } from 'typeorm';
 
 
+import { Wallet } from './wallet.entity';
+
 export enum TransactionType {
     PAYMENT = 'payment',
     COMMISSION = 'commission',
@@ -26,9 +28,9 @@ export class Transaction {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne('Wallet', 'transactions', { onDelete: 'CASCADE' })
+    @ManyToOne(() => Wallet, (wallet) => wallet.transactions, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'walletId' })
-    wallet: any;
+    wallet: Wallet;
 
     @Column()
     walletId: number;

@@ -24,13 +24,22 @@ export class WalletService {
     ) {}
 
     async getOrCreateWallet(professionalId: number): Promise<Wallet> {
+        // ULTRA-LIGHT CHECK: Direct query to avoid heavy relations that cause 500 errors
+        const proExists = await this.walletRepo.query(
+            'SELECT id FROM professionals WHERE id = $1',
+            [professionalId]
+        );
+        
+        if (!proExists || proExists.length === 0) {
+            throw new BadRequestException(`Professional ID ${professionalId} does not exist in DB.`);
+        }
+
         let wallet = await this.walletRepo.findOne({
             where: { professionalId },
-            relations: ['transactions'],
         });
 
         if (!wallet) {
-            wallet = this.walletRepo.create({ professionalId });
+            wallet = this.walletRepo.create({ professionalId, balance: 0, currency: 'COP' });
             wallet = await this.walletRepo.save(wallet);
         }
 
@@ -87,27 +96,38 @@ export class WalletService {
     }
 
     async recharge(professionalId: number, amount: number) {
-        const wallet = await this.getOrCreateWallet(professionalId);
+        try {
+            const wallet = await this.getOrCreateWallet(professionalId);
+            const rechargeAmount = Number(amount);
 
-        await this.transactionRepo.save(
-            this.transactionRepo.create({
-                walletId: wallet.id,
-                type: TransactionType.RECHARGE,
-                amount,
-                description: 'Wallet recharge',
-                status: TransactionStatus.COMPLETED,
-            }),
-        );
+            if (isNaN(rechargeAmount) || rechargeAmount <= 0) {
+                throw new BadRequestException('Invalid recharge amount');
+            }
 
-        wallet.balance = Number(wallet.balance) + amount;
-        await this.walletRepo.save(wallet);
+            await this.transactionRepo.save(
+                this.transactionRepo.create({
+                    walletId: wallet.id,
+                    type: TransactionType.RECHARGE,
+                    amount: rechargeAmount,
+                    description: 'Wallet recharge',
+                    status: TransactionStatus.COMPLETED,
+                }),
+            );
 
-        // Check if professional should become visible again
-        if (Number(wallet.balance) > this.getMinBalance(wallet.currency)) {
-            await this.professionalsService.setVisibility(professionalId, true);
+            wallet.balance = Number(wallet.balance) + rechargeAmount;
+            const updatedWallet = await this.walletRepo.save(wallet);
+
+            // Check if professional should become visible again
+            const minBalance = this.getMinBalance(wallet.currency);
+            if (Number(updatedWallet.balance) > minBalance) {
+                await this.professionalsService.setVisibility(professionalId, true);
+            }
+
+            return updatedWallet;
+        } catch (error) {
+            console.error(`Recharge failed for professional ${professionalId}:`, error);
+            throw error;
         }
-
-        return wallet;
     }
 
     private async checkBalance(wallet: Wallet, professionalId: number, userId: number) {
