@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Professional } from '../../professionals/entities/professional.entity';
 import { Booking } from '../../bookings/entities/booking.entity';
@@ -50,8 +50,15 @@ export class AdminService {
         };
     }
 
-    async getUsers(page: number = 1, limit: number = 20) {
+    async getUsers(page: number = 1, limit: number = 20, search?: string) {
+        const where = search ? [
+            { name: ILike(`%${search}%`) },
+            { lastName: ILike(`%${search}%`) },
+            { email: ILike(`%${search}%`) }
+        ] : {};
+
         const [data, total] = await this.userRepo.findAndCount({
+            where,
             relations: ['roles'],
             skip: (page - 1) * limit,
             take: limit,
@@ -60,8 +67,15 @@ export class AdminService {
         return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
     }
 
-    async getProfessionals(page: number = 1, limit: number = 20) {
+    async getProfessionals(page: number = 1, limit: number = 20, search?: string) {
+        const where = search ? [
+            { user: { name: ILike(`%${search}%`) } },
+            { user: { lastName: ILike(`%${search}%`) } },
+            { user: { email: ILike(`%${search}%`) } }
+        ] : {};
+
         const [data, total] = await this.proRepo.findAndCount({
+            where,
             relations: ['user', 'professionalServices', 'professionalServices.service'],
             skip: (page - 1) * limit,
             take: limit,

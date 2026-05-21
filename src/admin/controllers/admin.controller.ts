@@ -23,13 +23,13 @@ export class AdminController {
     @Get('users')
     @ApiOperation({ summary: 'Obtener listado paginado de usuarios' })
     getUsers(@Query() pagination: PaginationDto) {
-        return this.adminService.getUsers(pagination.page, pagination.limit);
+        return this.adminService.getUsers(pagination.page, pagination.limit, pagination.search);
     }
 
     @Get('professionals')
     @ApiOperation({ summary: 'Obtener listado paginado de profesionales' })
     getProfessionals(@Query() pagination: PaginationDto) {
-        return this.adminService.getProfessionals(pagination.page, pagination.limit);
+        return this.adminService.getProfessionals(pagination.page, pagination.limit, pagination.search);
     }
 
     @Get('transactions')
