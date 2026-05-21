@@ -35,6 +35,13 @@ export class AuthService {
     }
 
     async login(user: any) {
+        if (user.isTwoFactorEnabled) {
+            return {
+                require2FA: true,
+                userId: user.id,
+            };
+        }
+
         const payload = {
             sub: user.id,
             email: user.email,
@@ -47,6 +54,23 @@ export class AuthService {
         return {
             ...tokens,
             user,
+        };
+    }
+
+    async loginWith2FA(user: any) {
+        const payload = {
+            sub: user.id,
+            email: user.email,
+            roles: user.roles?.map((r: any) => r.name) || [],
+        };
+
+        const tokens = await this.generateTokens(payload);
+        await this.usersService.updateRefreshToken(user.id, tokens.refresh_token);
+
+        const { password: _, refreshToken: __, twoFactorSecret: ___, ...userResult } = user;
+        return {
+            ...tokens,
+            user: userResult,
         };
     }
 

@@ -13,6 +13,8 @@ import { ModulesGuard } from './guards/modules.guard.guard';
 import { JwtAuthGuard } from './guards/auth.guard';
 import { MailModule } from '../mail/mail.module';
 
+import { TwoFactorService } from './services/two-factor.service';
+
 @Module({
     imports: [
         UsersModule,
@@ -26,8 +28,8 @@ import { MailModule } from '../mail/mail.module';
             }),
         }),
     ],
-    providers: [AuthService, ModulesGuard, JwtAuthGuard, JwtStrategy, JwtRefreshStrategy, GoogleStrategy],
+    providers: [AuthService, TwoFactorService, ModulesGuard, JwtAuthGuard, JwtStrategy, JwtRefreshStrategy, GoogleStrategy],
     controllers: [AuthController],
-    exports: [AuthService, ModulesGuard, JwtAuthGuard],
+    exports: [AuthService, TwoFactorService, ModulesGuard, JwtAuthGuard],
 })
 export class AuthModule {}
