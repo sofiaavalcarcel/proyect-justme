@@ -21,23 +21,36 @@ export class ProfessionalStatsService {
 
     async getStats(professionalId: number) {
         const now = new Date();
+        
+        // Helper to get YYYY-MM-DD in local time
+        const formatDate = (d: Date) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
 
-        // ── Date ranges ──
-        const todayStr = now.toISOString().split('T')[0];
+        const todayStr = formatDate(now);
 
+        // Start of week (Monday)
         const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
-        startOfWeek.setHours(0, 0, 0, 0);
-        const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
-        const endOfWeekStr = new Date(startOfWeek.getTime() + 6 * 86400000).toISOString().split('T')[0];
+        const day = startOfWeek.getDay();
+        const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+        startOfWeek.setDate(diff);
+        const startOfWeekStr = formatDate(startOfWeek);
 
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const startOfMonthStr = startOfMonth.toISOString().split('T')[0];
-        const endOfMonthStr = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+        // End of week (Sunday)
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        const endOfWeekStr = formatDate(endOfWeek);
 
-        const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const startOfPrevMonthStr = startOfPrevMonth.toISOString().split('T')[0];
-        const endOfPrevMonthStr = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+        // Start of month
+        const startOfMonthStr = formatDate(new Date(now.getFullYear(), now.getMonth(), 1));
+        const endOfMonthStr = formatDate(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+
+        // Start of previous month
+        const startOfPrevMonthStr = formatDate(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+        const endOfPrevMonthStr = formatDate(new Date(now.getFullYear(), now.getMonth(), 0));
 
         // ── Parallel queries ──
         const [
@@ -69,7 +82,7 @@ export class ProfessionalStatsService {
                 },
             }),
 
-            // This week's bookings (with service info for chart + top services)
+            // This week's bookings
             this.bookingRepo.find({
                 where: {
                     professionalId,
@@ -141,8 +154,10 @@ export class ProfessionalStatsService {
         const weeklyBookingsByDay = [0, 0, 0, 0, 0, 0, 0];
         const weeklyEarningsByDay = [0, 0, 0, 0, 0, 0, 0];
         weekBookings.forEach(b => {
-            const d = new Date(b.date);
+            // Use T12:00:00 to avoid timezone shifts during getDay()
+            const d = new Date(b.date + 'T12:00:00');
             const dayIdx = (d.getDay() + 6) % 7; // Convert Sun=0 to Mon=0
+            
             weeklyBookingsByDay[dayIdx]++;
             if (b.status === BookingStatus.COMPLETED) {
                 weeklyEarningsByDay[dayIdx] += Number(b.price);

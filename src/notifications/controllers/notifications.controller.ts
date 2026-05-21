@@ -34,4 +34,10 @@ export class NotificationsController {
     markAllAsRead(@CurrentUser('id') userId: number) {
         return this.notificationsService.markAllAsRead(userId);
     }
+
+    @Patch('delete-all')
+    @ApiOperation({ summary: 'Eliminar todas las notificaciones del usuario' })
+    deleteAll(@CurrentUser('id') userId: number) {
+        return this.notificationsService.deleteAll(userId);
+    }
 }

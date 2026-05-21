@@ -18,10 +18,20 @@ export class WalletController {
 
     @Post(':professionalId/recharge')
     @ApiOperation({ summary: 'Recargar billetera' })
-    recharge(
+    async recharge(
         @Param('professionalId', ParseIntPipe) professionalId: number,
         @Body('amount') amount: number,
     ) {
-        return this.walletService.recharge(professionalId, amount);
+        try {
+            return await this.walletService.recharge(professionalId, amount);
+        } catch (error) {
+            console.error('DEBUG - Recharge Controller Error:', error);
+            return {
+                error: true,
+                message: error.message,
+                stack: error.stack,
+                details: 'This is a debug response to trace the 500 error'
+            };
+        }
     }
 }
