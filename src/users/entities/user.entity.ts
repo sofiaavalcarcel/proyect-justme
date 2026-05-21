@@ -68,6 +68,12 @@ export class User {
     @Column({ type: 'text', nullable: true })
     refreshToken: string;
 
+    @Column({ type: 'varchar', nullable: true })
+    twoFactorSecret: string;
+
+    @Column({ type: 'boolean', default: false })
+    isTwoFactorEnabled: boolean;
+
     @CreateDateColumn()
     createdAt: Date;
 

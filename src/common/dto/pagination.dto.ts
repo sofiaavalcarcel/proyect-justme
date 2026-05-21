@@ -17,6 +17,10 @@ export class PaginationDto {
     @Min(1)
     @Max(100)
     limit?: number = 20;
+
+    @ApiPropertyOptional({ description: 'Término de búsqueda opcional' })
+    @IsOptional()
+    search?: string;
 }
 
 export interface PaginatedResult<T> {

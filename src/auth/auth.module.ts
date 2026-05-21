@@ -14,6 +14,8 @@ import { RolesGuard } from './guards/roles.guard';
 import { JwtAuthGuard } from './guards/auth.guard';
 import { MailModule } from '../mail/mail.module';
 
+import { TwoFactorService } from './services/two-factor.service';
+
 @Module({
     imports: [
         UsersModule,

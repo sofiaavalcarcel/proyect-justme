@@ -1,7 +1,7 @@
-import { ModulesGuardGuard } from './modules.guard.guard';
+import { ModulesGuard } from './modules.guard.guard';
 
 describe('ModulesGuardGuard', () => {
   it('should be defined', () => {
-    expect(new ModulesGuardGuard()).toBeDefined();
+    expect(new ModulesGuard({} as any)).toBeDefined();
   });
 });
