@@ -70,6 +70,16 @@ export class CreateUserDto {
     @Type(() => Number)
     @ApiPropertyOptional()
     readonly longitude?: number;
+
+    @IsOptional()
+    @IsString()
+    @ApiPropertyOptional()
+    readonly twoFactorSecret?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    @ApiPropertyOptional()
+    readonly isTwoFactorEnabled?: boolean;
 }
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {}

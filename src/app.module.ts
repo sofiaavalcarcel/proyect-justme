@@ -29,6 +29,10 @@ import { CouponsModule } from './coupons/coupons.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
 import { MailModule } from './mail/mail.module';
+import { AuditModule } from './audit/audit.module';
+import { AiModule } from './modules/ai/ai.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 
 @Module({
     imports: [
@@ -77,6 +81,8 @@ import { MailModule } from './mail/mail.module';
         NotificationsModule,
         AdminModule,
         MailModule,
+        AuditModule,
+        AiModule,
     ],
     controllers: [AppController],
     providers: [
@@ -84,6 +90,10 @@ import { MailModule } from './mail/mail.module';
         {
             provide: APP_GUARD,
             useClass: ThrottlerGuard,
+        },
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: AuditInterceptor,
         },
     ],
 })
