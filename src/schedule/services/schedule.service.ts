@@ -7,6 +7,7 @@ import { ScheduleException } from '../entities/schedule-exception.entity';
 import { Booking, BookingStatus } from '../../bookings/entities/booking.entity';
 
 import { ProfessionalsService } from '../../professionals/services/professionals.service';
+import { ServicesService } from '../../services/services/services.service';
 
 @Injectable()
 export class ScheduleService {
@@ -17,6 +18,7 @@ export class ScheduleService {
         @InjectRepository(Booking) private bookingRepo: Repository<Booking>,
         @Inject(forwardRef(() => ProfessionalsService))
         private professionalsService: ProfessionalsService,
+        private servicesService: ServicesService,
     ) {}
 
     async getSchedule(professionalId: number) {
@@ -38,21 +40,48 @@ export class ScheduleService {
         await this.scheduleRepo.delete({ professionalId });
 
         const schedules = scheduleData.map((day) => {
-            const schedule = this.scheduleRepo.create({
+            return this.scheduleRepo.create({
                 professionalId,
                 dayOfWeek: day.dayOfWeek,
                 startTime: day.startTime,
                 endTime: day.endTime,
                 isActive: day.isActive,
-                breaks: day.breaks?.map((b) => this.breakRepo.create(b)) || [],
             });
-            return schedule;
         });
 
-        return this.scheduleRepo.save(schedules);
+        const savedSchedules = await this.scheduleRepo.save(schedules);
+
+        // Save breaks linked to the saved schedules
+        const allBreaks: any[] = [];
+        scheduleData.forEach((day, index) => {
+            const savedSchedule = savedSchedules[index];
+            if (day.breaks && day.breaks.length > 0) {
+                day.breaks.forEach((b) => {
+                    allBreaks.push(
+                        this.breakRepo.create({
+                            ...b,
+                            scheduleId: savedSchedule.id,
+                        })
+                    );
+                });
+            }
+        });
+
+        if (allBreaks.length > 0) {
+            await this.breakRepo.save(allBreaks);
+        }
+
+        return this.getSchedule(professionalId);
     }
 
-    async getAvailableSlots(professionalId: number, date: string, latitude?: number, longitude?: number) {
+    async getAvailableSlots(
+        professionalId: number, 
+        date: string, 
+        serviceId?: number, 
+        latitude?: number, 
+        longitude?: number,
+        serviceDuration: number = 60
+    ) {
         // Spatial Validation
         if (latitude !== undefined && longitude !== undefined) {
             const { inRadius } = await this.professionalsService.isLocationInRadius(
@@ -61,7 +90,7 @@ export class ScheduleService {
                 longitude,
             );
             if (!inRadius) {
-                throw new BadRequestException('Diana no presta servicios en esta ubicación específica');
+                throw new BadRequestException('El profesional no presta servicios en esta ubicación específica');
             }
         }
 
@@ -74,7 +103,30 @@ export class ScheduleService {
 
         if (!schedule) return { date, slots: [] };
 
-        // Get existing bookings for this date (using both CONFIRMED and PENDING to avoid overlaps)
+        // Determine dynamic duration
+        let duration = serviceDuration; 
+        let bufferTime = 15; // Default: 15 mins
+
+        const professional = await this.professionalsService.findOne(professionalId);
+        if (professional) {
+            bufferTime = professional.bufferTime !== undefined ? Number(professional.bufferTime) : 15;
+        }
+
+        if (serviceId) {
+            try {
+                const proService = await this.servicesService.findOne(serviceId);
+                if (proService && proService.duration) {
+                    duration = Number(proService.duration);
+                }
+            } catch (e) {
+                // Ignore if service not found, use provided duration
+            }
+        }
+
+        // The slot step is duration + buffer
+        const totalDuration = duration + bufferTime;
+
+        // Get existing bookings for this date
         const existingBookings = await this.bookingRepo.find({
             where: [
                 { professionalId, date, status: BookingStatus.CONFIRMED },
@@ -87,17 +139,48 @@ export class ScheduleService {
             where: { professionalId, date },
         });
 
-        // Check if there is a full day exception
         const isFullDayOff = exceptions.some(e => e.isFullDay);
-        if (isFullDayOff) return { date, slots: [] };
+        if (isFullDayOff) {
+            console.log(`[Schedule] Full day off for date ${date}`);
+            return { date, slots: [] };
+        }
 
-        // Generate time slots (every 60 minutes)
+        // 1. NEW: Check Maximum Daily Appointments
+        const maxAppts = professional.maxAppointments !== undefined ? Number(professional.maxAppointments) : 8;
+        if (existingBookings.length >= maxAppts) {
+            console.log(`[Schedule] Max appts reached (${existingBookings.length}/${maxAppts}) for ${date}`);
+            return { date, slots: [] };
+        }
+
+        console.log(`[Schedule] Generating slots for ${date}. Working Hours: ${schedule.startTime}-${schedule.endTime}`);
+
+        // 2. NEW: Check Advance Notice (if date is today)
+        let minTimeInMinutes = -1;
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (date === todayStr) {
+            const now = new Date();
+            // Use server time or professional's timezone if applicable. For now, server local.
+            const advanceNoticeHours = professional.advanceNotice !== undefined ? Number(professional.advanceNotice) : 2;
+            const minTime = new Date(now.getTime() + advanceNoticeHours * 60 * 60 * 1000);
+            
+            // If the calculated minTime is already on a different day, no slots available today
+            if (minTime.toISOString().split('T')[0] !== todayStr) {
+                return { date, slots: [] };
+            }
+            
+            minTimeInMinutes = minTime.getHours() * 60 + minTime.getMinutes();
+        }
+
+        // Generate time slots
         const slots = this.generateTimeSlots(
             schedule.startTime,
             schedule.endTime,
             schedule.breaks || [],
             existingBookings,
             exceptions,
+            totalDuration,
+            minTimeInMinutes,
+            bufferTime,
         );
 
         return { date, slots };
@@ -125,37 +208,54 @@ export class ScheduleService {
         breaks: ScheduleBreak[],
         bookings: Booking[],
         exceptions: ScheduleException[],
+        serviceDuration: number = 60,
+        minTimeInMinutes: number = -1,
+        bufferTime: number = 0,
     ): string[] {
         const slots: string[] = [];
+        const step = 30; // 30-minute granularity for more flexible slot options
         let current = this.timeToMinutes(startTime);
         const end = this.timeToMinutes(endTime);
 
-        while (current + 60 <= end) {
+        while (current + serviceDuration <= end) {
+            // NEW: Skip slots before advance notice minimum time
+            if (minTimeInMinutes !== -1 && current < minTimeInMinutes) {
+                current += step;
+                continue;
+            }
+            
+            const slotEnd = current + serviceDuration;
             const timeStr = this.minutesToTime(current);
+
+            // Check if ANY minute of the block falls into a break
             const isBreak = breaks.some(
                 (b) =>
-                    current >= this.timeToMinutes(b.startTime) &&
-                    current < this.timeToMinutes(b.endTime),
+                    current < this.timeToMinutes(b.endTime) &&
+                    slotEnd > this.timeToMinutes(b.startTime),
             );
 
+            // Check if ANY minute of the block overlaps with an existing booking
+            // ADDED: We extend the booking's end time by the bufferTime to guarantee the break
             const isBooked = bookings.some(
                 (b) =>
-                    current >= this.timeToMinutes(b.startTime) &&
-                    current < this.timeToMinutes(b.endTime),
+                    current < (this.timeToMinutes(b.endTime) + bufferTime) &&
+                    slotEnd > this.timeToMinutes(b.startTime),
             );
 
+            // Check exceptions
             const isExcepted = exceptions.some(
                 (e) => 
                     !e.isFullDay && e.startTime && e.endTime &&
-                    current >= this.timeToMinutes(e.startTime) &&
-                    current < this.timeToMinutes(e.endTime)
+                    current < this.timeToMinutes(e.endTime) &&
+                    slotEnd > this.timeToMinutes(e.startTime)
             );
 
             if (!isBreak && !isBooked && !isExcepted) {
                 slots.push(this.formatTimeDisplay(timeStr));
             }
 
-            current += 60; // 1 hour slots
+            // Advance by the granularity step
+            current += step;
         }
 
         return slots;

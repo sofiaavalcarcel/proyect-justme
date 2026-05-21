@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe, BadRequestException } from '@nestjs/common';
+import * as express from 'express';
+import { join } from 'path';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
@@ -15,19 +17,27 @@ async function bootstrap() {
     const port = configService.get<number>('PORT') || 3000;
 
     // 2. Security Middlewares
-    app.use(helmet());
+    // Temporarily disabled helmet to debug NotSameOrigin
+    /*
+    app.use(helmet({
+        crossOriginResourcePolicy: { policy: "cross-origin" },
+        crossOriginEmbedderPolicy: false,
+    }));
+    */
+
     app.enableCors({
-        origin: (origin, callback) => {
-            // Allow any origin from localhost during development
-            if (!origin || origin.startsWith('http://localhost')) {
-                callback(null, true);
-            } else {
-                callback(new Error('Not allowed by CORS'));
-            }
-        },
+        origin: true,
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
         credentials: true,
     });
+
+    // Serve static files with explicit cross-origin header
+    app.use('/uploads', express.static(join(process.cwd(), 'uploads'), {
+        setHeaders: (res) => {
+            res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+            res.set('Access-Control-Allow-Origin', '*');
+        }
+    }));
 
     // 3. Global Pipes & Validation
     app.useGlobalPipes(

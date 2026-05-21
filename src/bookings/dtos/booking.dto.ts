@@ -38,6 +38,11 @@ export class CreateBookingDto {
     @IsNumber()
     @IsOptional()
     longitude?: number;
+
+    @ApiPropertyOptional({ example: 50000 })
+    @IsNumber()
+    @IsOptional()
+    price?: number;
 }
 
 export class UpdateBookingStatusDto {

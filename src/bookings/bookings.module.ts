@@ -6,12 +6,14 @@ import { BookingsService } from './services/bookings.service';
 import { BookingsController } from './controllers/bookings.controller';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ProfessionalsModule } from '../professionals/professionals.module';
+import { WalletModule } from '../wallet/wallet.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Booking, ProfessionalService]),
         forwardRef(() => NotificationsModule),
         ProfessionalsModule,
+        WalletModule,
     ],
     controllers: [BookingsController],
     providers: [BookingsService],

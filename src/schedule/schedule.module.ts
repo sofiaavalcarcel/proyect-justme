@@ -7,11 +7,13 @@ import { Booking } from '../bookings/entities/booking.entity';
 import { ScheduleService } from './services/schedule.service';
 import { ScheduleController } from './controllers/schedule.controller';
 import { ProfessionalsModule } from '../professionals/professionals.module';
+import { ServicesModule } from '../services/services.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([Schedule, ScheduleBreak, ScheduleException, Booking]),
         forwardRef(() => ProfessionalsModule),
+        ServicesModule,
     ],
     controllers: [ScheduleController],
     providers: [ScheduleService],

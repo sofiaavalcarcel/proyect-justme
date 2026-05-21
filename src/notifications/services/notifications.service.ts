@@ -47,4 +47,9 @@ export class NotificationsService {
     async getUnreadCount(userId: number): Promise<number> {
         return this.notifRepo.count({ where: { userId, isRead: false } });
     }
+
+    async deleteAll(userId: number) {
+        await this.notifRepo.delete({ userId });
+        return { success: true };
+    }
 }

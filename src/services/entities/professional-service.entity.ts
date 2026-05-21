@@ -27,6 +27,9 @@ export class ProfessionalService {
     @Column()
     serviceId: number;
 
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    name: string;
+
     @Column({ type: 'decimal', precision: 10, scale: 2 })
     price: number;
 
