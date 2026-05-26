@@ -29,8 +29,8 @@ import { TwoFactorService } from './services/two-factor.service';
             }),
         }),
     ],
-    providers: [AuthService, ModulesGuard, RolesGuard, JwtAuthGuard, JwtStrategy, JwtRefreshStrategy, GoogleStrategy],
+    providers: [AuthService, ModulesGuard, RolesGuard, JwtAuthGuard, JwtStrategy, JwtRefreshStrategy, GoogleStrategy, TwoFactorService],
     controllers: [AuthController],
     exports: [AuthService, ModulesGuard, RolesGuard, JwtAuthGuard],
 })
-export class AuthModule {}
+export class AuthModule { }

@@ -17,7 +17,7 @@ export class BookingsService {
         private notificationsService: NotificationsService,
         private professionalsService: ProfessionalsService,
         private walletService: WalletService,
-    ) {}
+    ) { }
 
     async create(userId: number, dto: CreateBookingDto) {
         // Get service duration
@@ -86,7 +86,7 @@ export class BookingsService {
         });
 
         // Notify professional
-        const professional = await this.professionalsService.findOne(dto.professionalId);
+        // const professional = await this.professionalsService.findOne(dto.professionalId);
         await this.notificationsService.send(
             professional.userId,
             'Nueva Reserva',
