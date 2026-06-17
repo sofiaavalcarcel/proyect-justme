@@ -1,7 +1,6 @@
-/* eslint-disable prettier/prettier */
-import { IsString, IsNotEmpty, IsArray, ArrayNotEmpty, IsInt, IsBoolean } from "class-validator";
-import { PartialType, ApiProperty } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { IsString, IsNotEmpty, IsArray, ArrayNotEmpty, IsInt, IsBoolean, IsOptional, IsEmail, IsNumber } from 'class-validator';
+import { PartialType, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export class CreateUserDto {
     @IsString()
@@ -10,21 +9,21 @@ export class CreateUserDto {
     readonly name: string;
 
     @IsString()
-    @IsNotEmpty()
-    @ApiProperty()
-    readonly lastName: string;
+    @IsOptional()
+    @ApiPropertyOptional()
+    readonly lastName?: string;
 
     @IsString()
-    @IsNotEmpty()
-    @ApiProperty()
-    readonly docType: string;
+    @IsOptional()
+    @ApiPropertyOptional()
+    readonly docType?: string;
 
     @IsString()
-    @IsNotEmpty()
-    @ApiProperty()
-    readonly docNumber: string;
+    @IsOptional()
+    @ApiPropertyOptional()
+    readonly docNumber?: string;
 
-    @IsString()
+    @IsEmail()
     @IsNotEmpty()
     @ApiProperty()
     readonly email: string;
@@ -34,10 +33,20 @@ export class CreateUserDto {
     @ApiProperty()
     readonly password: string;
 
+    @IsString()
+    @IsOptional()
+    @ApiPropertyOptional()
+    readonly phone?: string;
+
+    @IsString()
+    @IsOptional()
+    @ApiPropertyOptional()
+    readonly avatar?: string;
+
     @IsBoolean()
-    @IsNotEmpty()
-    @ApiProperty()
-    readonly isActive: boolean;
+    @IsOptional()
+    @ApiPropertyOptional()
+    readonly isActive?: boolean;
 
     @IsArray()
     @ArrayNotEmpty()
@@ -45,5 +54,32 @@ export class CreateUserDto {
     @Type(() => Number)
     @ApiProperty({ type: [Number] })
     readonly roleIds: number[];
+    @IsArray()
+    @IsOptional()
+    @ApiPropertyOptional()
+    readonly addresses?: any[];
+
+    @IsOptional()
+    @IsNumber()
+    @Type(() => Number)
+    @ApiPropertyOptional()
+    readonly latitude?: number;
+
+    @IsOptional()
+    @IsNumber()
+    @Type(() => Number)
+    @ApiPropertyOptional()
+    readonly longitude?: number;
+
+    @IsOptional()
+    @IsString()
+    @ApiPropertyOptional()
+    readonly twoFactorSecret?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    @ApiPropertyOptional()
+    readonly isTwoFactorEnabled?: boolean;
 }
-export class UpdateUserDto extends PartialType(CreateUserDto) { }
+
+export class UpdateUserDto extends PartialType(CreateUserDto) {}

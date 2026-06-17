@@ -35,12 +35,17 @@ export class RolesService {
 
 
     async findAll() {
-        return this.roleRepo.find();
+        return this.roleRepo.find({
+            relations: { modules: true }
+        });
     }
 
 
     async findOne(id: number) {
-        const role = await this.roleRepo.findOne({ where: { id } });
+        const role = await this.roleRepo.findOne({ 
+            where: { id },
+            relations: { modules: true } 
+        });
         if (!role) {
             throw new NotFoundException(`Role #${id} not found`);
         }
@@ -50,8 +55,21 @@ export class RolesService {
     async findByIds(roleIds: number[]) {
         const roles = await this.roleRepo.find({
             where: { id: In(roleIds) },
+            relations: { modules: true }
         });
         return roles;
+    }
+
+    async findByName(name: string): Promise<Role | null> {
+        return this.roleRepo.findOne({ 
+            where: { name },
+            relations: { modules: true } 
+        });
+    }
+
+    async createSimple(name: string): Promise<Role> {
+        const role = this.roleRepo.create({ name, description: name });
+        return this.roleRepo.save(role);
     }
 
 
